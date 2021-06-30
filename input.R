@@ -13,9 +13,9 @@ library(rjson)
 #'
 #' @return named list of reach id and associated SoS file
 get_sos_file_flpe <- function(reaches_json, input_dir, index) {
-  json_data <- fromJSON(file=paste(input_dir, reaches_json, sep='/'))[[index]]
+  json_data <- fromJSON(file=file.path(input_dir, reaches_json))[[index]]
   return(list(reach_id=json_data$reach_id,
-              sos=paste(input_dir, "sos", json_data$sos, sep='/')
+              sos=file.path(input_dir, "sos", json_data$sos)
   ))
 }
 
@@ -58,7 +58,7 @@ get_data_flpe <- function(sos_file, reach_id, input_dir) {
 get_flpe_q <- function(reach_id, input_dir) {
   # geobam
   file <- paste0(reach_id, "_geobam.nc")
-  geobam <- nc_open(paste(input_dir, "flpe", "geobam", file, sep='/'))
+  geobam <- nc_open(file.path(input_dir, "flpe", "geobam", file))
   qmean_chain1 <- ncvar_get(geobam, "logQ/mean_chain1")
   qmean_chain2 <- ncvar_get(geobam, "logQ/mean_chain2")
   qmean_chain3 <- ncvar_get(geobam, "logQ/mean_chain3")
@@ -69,24 +69,24 @@ get_flpe_q <- function(reach_id, input_dir) {
   
   # hivdi
   file <- paste0(reach_id, "_hivdi.nc")
-  hivdi <- nc_open(paste(input_dir, "flpe", "hivdi", file, sep='/'))
+  hivdi <- nc_open(file.path(input_dir, "flpe", "hivdi", file))
   hivdi_q <- ncvar_get(hivdi, "reach/Q")
   nc_close(hivdi)
   
   # momma
   file <- paste0(reach_id, "_momma.nc")
-  momma <- nc_open(paste(input_dir, "flpe", "momma", file, sep='/'))
+  momma <- nc_open(file.path(input_dir, "flpe", "momma", file))
   momma_q <- ncvar_get(momma, "Q")
   nc_close(momma)
   
   # sad
   file <- paste0(reach_id, "_sad.nc")
-  sad <- nc_open(paste(input_dir, "flpe", "sad", file, sep='/'))
+  sad <- nc_open(file.path(input_dir, "flpe", "sad", file))
   sad_q <- ncvar_get(sad, "Qa")
   nc_close(sad)
   
   # metroman
-  file <- list.files(path=paste(input_dir, "flpe", "metroman", sep='/'), 
+  file <- list.files(path=file.path(input_dir, "flpe", "metroman"), 
                          pattern=paste0(".*", reach_id, ".*", "_metroman\\.nc"), 
                          recursive=TRUE, 
                          full.names=TRUE)
