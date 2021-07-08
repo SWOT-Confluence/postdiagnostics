@@ -58,7 +58,9 @@ run_diagnostics_integrator <- function(data) {
   ## Do Stuff
 }
 
-input_dir <- "/home/nikki/Documents/confluence/workspace/diagnostics/post_data"    # CHANGE ME
+# CHANGE ME #
+input_dir <- file.path("/home", "nikki", "Documents", "confluence", "workspace",
+                       "diagnostics", "post_data", fsep=.Platform$file.sep)    
 
 # Run FLPE diagnostics
 data <- get_discharge_flpe(input_dir)
