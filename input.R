@@ -19,18 +19,19 @@ get_sos_file_flpe <- function(reaches_json, input_dir, index) {
   ))
 }
 
-#' Get files associated with a reach identifier - not complete
+#' Get integrator file for basin
 #' 
 #' The reach identifier is determined from the index number which is used to 
 #' select an element from the JSON list.  
 #'
-#' @param reaches_json string path to JSON file with reach data
+#' @param basin_json string path to JSON file with basin data
 #' @param input_dir string path to input directory
 #' @param index integer index for JSON file
 #'
 #' @return named list of reach files associate with reach identifier
-get_reach_files_integrator <- function(reaches_json, input_dir, index) {
-  ## TODO implement: Not sure of integrator output.
+get_integrator_file <- function(basin_json, input_dir, index) {
+  json_data <- fromJSON(file=file.path(input_dir, basin_json, fsep=.Platform$file.sep))[[index]]
+  return(file.path(input_dir, "integrator", paste0(json_data$basin_id, "_integrator.nc"), fsep=.Platform$file.sep))
 }
 
 #' Get FLPE discharge data (priors and posteriors)
@@ -59,18 +60,13 @@ get_flpe_q <- function(reach_id, input_dir) {
   # geobam
   file <- paste0(reach_id, "_geobam.nc")
   geobam <- nc_open(file.path(input_dir, "flpe", "geobam", file, fsep=.Platform$file.sep))
-  qmean_chain1 <- ncvar_get(geobam, "logQ/mean_chain1")
-  qmean_chain2 <- ncvar_get(geobam, "logQ/mean_chain2")
-  qmean_chain3 <- ncvar_get(geobam, "logQ/mean_chain3")
-  qsd_chain1 <- ncvar_get(geobam, "logQ/sd_chain1")
-  qsd_chain2 <- ncvar_get(geobam, "logQ/sd_chain2")
-  qsd_chain3 <- ncvar_get(geobam, "logQ/sd_chain3")
+  gb_list <- get_gb_q(geobam)
   nc_close(geobam)
   
   # hivdi
   file <- paste0(reach_id, "_hivdi.nc")
   hivdi <- nc_open(file.path(input_dir, "flpe", "hivdi", file, fsep=.Platform$file.sep))
-  hivdi_q <- ncvar_get(hivdi, "reach/Q")
+  hivdi_q <- temp_hivdi_q(gb_list$qmean, ncvar_get(hivdi, "reach/Q"))
   nc_close(hivdi)
   
   # momma
@@ -83,6 +79,7 @@ get_flpe_q <- function(reach_id, input_dir) {
   file <- paste0(reach_id, "_sad.nc")
   sad <- nc_open(file.path(input_dir, "flpe", "sad", file, fsep=.Platform$file.sep))
   sad_q <- ncvar_get(sad, "Qa")
+  sad_u <- ncvar_get(sad, "Q_u")
   nc_close(sad)
   
   # metroman
@@ -93,20 +90,42 @@ get_flpe_q <- function(reach_id, input_dir) {
   metroman <- nc_open(file)
   reach_ids <- ncvar_get(metroman, "reach_id")
   index <- which(reach_ids==reach_id, arr.ind=TRUE)
-  metroman_q <- ncvar_get(metroman, "x1hat")[index]
+  metroman_q <- ncvar_get(metroman, "allq")[,index]
+  metroman_u <- ncvar_get(metroman, "q_u")[1,index]
   nc_close(metroman)
   
-  return(data.frame(geobam_qmean_chain1 = qmean_chain1,
-                    geobam_qmean_chain2 = qmean_chain2,
-                    geobam_qmean_chain3 = qmean_chain3,
-                    geobam_qsd_chain1 = qsd_chain1,
-                    geobam_qsd_chain2 = qsd_chain2,
-                    geobam_qsd_chain3 = qsd_chain3,
-                    hivdi = hivdi_q,
-                    momma = momma_q,
-                    sad = sad_q,
-                    metroman = c(metroman_q, rep(NA, length(sad_q) - 1))
+  return(data.frame(geobam_q = gb_list$qmean,
+                    geobam_u = gb_list$qsd,
+                    hivdi_q = hivdi_q,
+                    momma_q = momma_q,
+                    sad_q = sad_q,
+                    sad_u = sad_u,
+                    metroman_q = metroman_q,
+                    metroman_u = metroman_u
   ))
+}
+
+#' Get geoBAM discharge posteriors
+#'
+#' @param geobam ncdf4 dataset of geobam posteriors
+#'
+#' @return list of lists (mean and standard deviation discharge)
+get_gb_q <- function(geobam) {
+  qmean_chains <- cbind(ncvar_get(geobam, "logQ/mean_chain1"), 
+                        ncvar_get(geobam, "logQ/mean_chain2"), 
+                        ncvar_get(geobam, "logQ/mean_chain3"))
+  
+  qsd_chains <- cbind(ncvar_get(geobam, "logQ/sd_chain1"), 
+                      ncvar_get(geobam, "logQ/sd_chain2"), 
+                      ncvar_get(geobam, "logQ/sd_chain3"))
+  
+  qmean <- exp(rowMeans(qmean_chains, na.rm=TRUE))
+  qsd <- exp(rowMeans(qsd_chains, na.rm=TRUE))
+  
+  qmean[is.nan(qmean)] <- NA
+  qsd[is.nan(qsd)] <- NA
+  
+  return(list(qmean=qmean, qsd=qsd))
 }
 
 #' Get SOS discharge priors
@@ -120,20 +139,54 @@ get_sos_q <- function(sos_file, reach_id, nt) {
   sos <- nc_open(sos_file)
   reach_ids <- ncvar_get(sos, "reaches/reach_id")
   index <- which(reach_ids==reach_id, arr.ind=TRUE)
-  qmean <- ncvar_get(sos, "reaches/q_mean")[index]
-  qsd <- ncvar_get(sos, "reaches/q_sd")[index]
-  qmin <- ncvar_get(sos, "reaches/q_min")[index]
-  qmax <- ncvar_get(sos, "reaches/q_max")[index]
-  return(data.frame(sos_qmean = c(qmean, rep(NA, nt)),
-                    sos_qsd = c(qsd, rep(NA, nt)),
-                    sos_qmin = c(qmin, rep(NA, nt)),
-                    sos_qmax = c(qmax, rep(NA, nt))
+  qmean <- ncvar_get(sos, "reaches/mean_q")[index]
+  qsd <- exp(ncvar_get(sos, "reaches/logQ_sd")[index])
+  qmin <- ncvar_get(sos, "reaches/min_q")[index]
+  qmax <- ncvar_get(sos, "reaches/max_q")[index]
+  nc_close(sos)
+  return(data.frame(sos_qmean = qmean,
+                    sos_qsd = qsd,
+                    sos_qmin = qmin,
+                    sos_qmax = qmax
   ))
 }
 
-#' Get Integrator discharge data (priors and posteriors) - not complete
+#' Get Integrator discharge data (priors and posteriors)
+#' 
+#' @param integrator_file path to integrator data file
 #' 
 #' @return ?
-get_data_integrator <- function() {
-  ## TODO implement
+get_data_integrator <- function(integrator_file) {
+  integrator <- nc_open(integrator_file)
+  reach_ids <- ncvar_get(integrator, "reach_id")
+  qmean <- ncvar_get(integrator, "Qmean")
+  geobam <- ncvar_get(integrator, "geobam")
+  hivdi <- ncvar_get(integrator, "hivdi")
+  metroman <- ncvar_get(integrator, "metroman")
+  momma <- ncvar_get(integrator, "momma")
+  sad <- ncvar_get(integrator, "sad")
+  nc_close(integrator)
+  return(data.frame(reach_ids = reach_ids,
+                    qmean = qmean,
+                    geobam = geobam,
+                    hivdi = hivdi,
+                    metroman = metroman,
+                    momma = momma,
+                    sad = sad
+  ))
+}
+
+#' Insert invalid time steps into HiVDI discharge data
+#'
+#' @param gb_q vector of geoBAM discharge with NA
+#' @param hv_q vector of HiVDI discharge with no NA
+#'
+#' @return
+temp_hivdi_q <- function(gb_q, hv_q) {
+  
+  indexes <- which(is.na(gb_q))
+  for (index in indexes) {
+    hv_q <- append(hv_q, NA, after=index-1)
+  }
+  return(hv_q)
 }
