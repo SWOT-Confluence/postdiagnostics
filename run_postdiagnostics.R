@@ -1,6 +1,10 @@
 source("input.R")
-source("postdiagnostics")
+source("postdiagnostics.R")
 source("output.R")
+
+library(RNetCDF)
+library(dplyr)
+library(rjson)
 
 # RUN FLPE DIAGNOSTICS
 start <- Sys.time()

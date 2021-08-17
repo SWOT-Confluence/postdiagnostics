@@ -1,7 +1,3 @@
-library(ncdf4)
-library(plyr)
-library(rjson)
-
 #' Gets reference to SoS file
 #' 
 #' The reach identifier is determined from the index number which is used to 
@@ -44,80 +40,180 @@ get_integrator_file <- function(basin_json, input_dir, index) {
 #'
 #' @return named list with FLPE and SoS data
 get_data_flpe <- function(sos_file, reach_id, input_dir) {
-  flpe_df <- get_flpe_q(reach_id, input_dir)
-  nt <- dim(flpe_df)[1] - 1
-  sos_df <- get_sos_q(sos_file, reach_id, nt)
-  return(cbind(flpe_df, sos_df))
+  
+  curr_df <- get_flpe_current(reach_id, input_dir)
+  prev_df <- get_flpe_prev(reach_id, sos_file)
+  sos_df <- get_sos_q(sos_file, reach_id)
+  
+  return(list(curr=cbind(curr_df, sos_df), prev=cbind(prev_df, sos_df)))
 }
 
-#' Get FLPE discharge output
+#' Get FLPE discharge output from current run
 #'
 #' @param reach_id float reach identifier
 #' @param input_dir string path to input directory (FLPE, SOS, JSON)
 #'
-#' @return dataframe of FLPE discharge data
-get_flpe_q <- function(reach_id, input_dir) {
+#' @return dataframe of current FLPE discharge data
+get_flpe_current <- function(reach_id, input_dir) {
+  
+  # time
+  file <- paste0(reach_id, "_SWOT.nc")
+  swot <- open.nc(file.path(input_dir, "swot", file, fsep=.Platform$file.sep))
+  nt = var.get.nc(swot, "nt")
+  close.nc(swot)
+  
   # geobam
   file <- paste0(reach_id, "_geobam.nc")
-  geobam <- nc_open(file.path(input_dir, "flpe", "geobam", file, fsep=.Platform$file.sep))
-  gb_list <- get_gb_q(geobam)
-  nc_close(geobam)
+  geobam <- open.nc(file.path(input_dir, "flpe", "geobam", file, fsep=.Platform$file.sep))
+  gb_list <- get_gb_q_cur(geobam, "logQ")
+  close.nc(geobam)
   
-  # hivdi
-  file <- paste0(reach_id, "_hivdi.nc")
-  hivdi <- nc_open(file.path(input_dir, "flpe", "hivdi", file, fsep=.Platform$file.sep))
-  hivdi_q <- temp_hivdi_q(gb_list$qmean, ncvar_get(hivdi, "reach/Q"))
-  nc_close(hivdi)
+  # # hivdi TODO
+  # file <- paste0(reach_id, "_hivdi.nc")
+  # hivdi <- open.nc(file.path(input_dir, "flpe", "hivdi", file, fsep=.Platform$file.sep))
+  # hv_grp = grp.inq.nc(hivdi, "reach")$self
+  # hivdi_q <- temp_hivdi_q(gb_list$qmean, var.get.nc(hv_grp, "Q"))
+  # close.nc(hivdi)
   
   # momma
   file <- paste0(reach_id, "_momma.nc")
-  momma <- nc_open(file.path(input_dir, "flpe", "momma", file, fsep=.Platform$file.sep))
-  momma_q <- ncvar_get(momma, "Q")
-  nc_close(momma)
+  momma <- open.nc(file.path(input_dir, "flpe", "momma", file, fsep=.Platform$file.sep))
+  momma_q <- var.get.nc(momma, "Q")
+  close.nc(momma)
   
-  # sad
-  file <- paste0(reach_id, "_sad.nc")
-  sad <- nc_open(file.path(input_dir, "flpe", "sad", file, fsep=.Platform$file.sep))
-  sad_q <- ncvar_get(sad, "Qa")
-  sad_u <- ncvar_get(sad, "Q_u")
-  nc_close(sad)
+  # # sad TODO
+  # file <- paste0(reach_id, "_sad.nc")
+  # sad <- open.nc(file.path(input_dir, "flpe", "sad", file, fsep=.Platform$file.sep))
+  # sad_q <- var.get.nc(sad, "Qa")
+  # sad_u <- var.get.nc(sad, "Q_u")
+  # close.nc(sad)
   
   # metroman
   file <- list.files(path=file.path(input_dir, "flpe", "metroman", fsep=.Platform$file.sep), 
-                         pattern=paste0(".*", reach_id, ".*", "_metroman\\.nc"), 
-                         recursive=TRUE, 
-                         full.names=TRUE)
-  metroman <- nc_open(file)
-  reach_ids <- ncvar_get(metroman, "reach_id")
+                     pattern=paste0(".*", reach_id, ".*", "_metroman\\.nc"), 
+                     recursive=TRUE, 
+                     full.names=TRUE)
+  metroman <- open.nc(file)
+  reach_ids <- var.get.nc(metroman, "reach_id")
   index <- which(reach_ids==reach_id, arr.ind=TRUE)
-  metroman_q <- ncvar_get(metroman, "allq")[,index]
-  metroman_u <- ncvar_get(metroman, "q_u")[1,index]
-  nc_close(metroman)
+  metroman_q <- var.get.nc(metroman, "allq")[,index]
+  metroman_u <- var.get.nc(metroman, "q_u")[,index]
+  close.nc(metroman)
   
-  return(data.frame(geobam_q = gb_list$qmean,
+  # TODO
+  # return(data.frame(nt = nt,
+  #                   geobam_q = gb_list$qmean,
+  #                   geobam_u = gb_list$qsd,
+  #                   hivdi_q = hivdi_q,
+  #                   momma_q = momma_q,
+  #                   sad_q = sad_q,
+  #                   sad_u = sad_u,
+  #                   metroman_q = metroman_q,
+  #                   metroman_u = metroman_u
+  # ))
+  
+  return(data.frame(nt = nt,
+                    geobam_q = gb_list$qmean,
                     geobam_u = gb_list$qsd,
-                    hivdi_q = hivdi_q,
                     momma_q = momma_q,
-                    sad_q = sad_q,
-                    sad_u = sad_u,
                     metroman_q = metroman_q,
                     metroman_u = metroman_u
   ))
 }
 
-#' Get geoBAM discharge posteriors
+#' Get geoBAM discharge posteriors for current run
 #'
-#' @param geobam ncdf4 dataset of geobam posteriors
+#' @param ds NetCDF dataset
+#' @param name str name of group
 #'
 #' @return list of lists (mean and standard deviation discharge)
-get_gb_q <- function(geobam) {
-  qmean_chains <- cbind(ncvar_get(geobam, "logQ/mean_chain1"), 
-                        ncvar_get(geobam, "logQ/mean_chain2"), 
-                        ncvar_get(geobam, "logQ/mean_chain3"))
+get_gb_q_cur <- function(ds, name) {
+  logq_grp = grp.inq.nc(ds, name)$self
+  qmean_chains <- cbind(var.get.nc(logq_grp, "mean_chain1"), 
+                        var.get.nc(logq_grp, "mean_chain2"), 
+                        var.get.nc(logq_grp, "mean_chain3"))
   
-  qsd_chains <- cbind(ncvar_get(geobam, "logQ/sd_chain1"), 
-                      ncvar_get(geobam, "logQ/sd_chain2"), 
-                      ncvar_get(geobam, "logQ/sd_chain3"))
+  qsd_chains <- cbind(var.get.nc(logq_grp, "sd_chain1"), 
+                      var.get.nc(logq_grp, "sd_chain2"), 
+                      var.get.nc(logq_grp, "sd_chain3"))
+  
+  qmean <- exp(rowMeans(qmean_chains, na.rm=TRUE))
+  qsd <- exp(rowMeans(qsd_chains, na.rm=TRUE))
+  
+  qmean[is.nan(qmean)] <- NA
+  qsd[is.nan(qsd)] <- NA
+  
+  return(list(qmean=qmean, qsd=qsd))
+}
+
+#' Get FLPE algorithm discharge from previous run
+#'
+#' @param reach_id integer reach identifier
+#' @param sos_file str path to sos file
+#'
+#' @return dataframe of previous FLPE discharge data
+get_flpe_prev <- function(reach_id, sos_file) {
+  
+  # index
+  sos = open.nc(sos_file)
+  reach_ids = var.get.nc(sos, "num_reaches")
+  index = which(reach_ids==reach_id, arr.ind=TRUE)
+  
+  # time
+  nt = var.get.nc(sos, "time_steps")
+  
+  # geobam
+  gb_list <- get_gb_q_prev(sos, "geobam/logQ", index)
+  
+  # hivdi TODO
+  
+  # mommma
+  mo_grp <- grp.inq.nc(sos, "momma")$self
+  mo_q <- var.get.nc(mo_grp, "Q")[,index]
+  
+  # sad TODO
+  
+  # metroman
+  mm_grp <- grp.inq.nc(sos, "metroman")$self
+  mm_q <- var.get.nc(mm_grp, "allq")[,index]
+  mm_u <- var.get.nc(mm_grp, "q_u")[,index]
+  
+  close.nc(sos)
+  # return(data.frame(nt = nt,
+  #                   geobam_q = gb_list$qmean,
+  #                   geobam_u = gb_list$qsd,
+  #                   hivdi_q = hivdi_q,
+  #                   momma_q = mo_q,
+  #                   sad_q = sad_q,
+  #                   sad_u = sad_u,
+  #                   metroman_q = mm_q,
+  #                   metroman_u = mm_u
+  # ))
+  return(data.frame(nt = nt,
+                    geobam_q = gb_list$qmean,
+                    geobam_u = gb_list$qsd,
+                    momma_q = mo_q,
+                    metroman_q = mm_q,
+                    metroman_u = mm_u
+  ))
+}
+
+#' Get geoBAM discharge posteriors for previous run
+#'
+#' @param ds NetCDF dataset
+#' @param name str name of group
+#' @param index integer to index data on
+#'
+#' @return list of lists (mean and standard deviation discharge)
+get_gb_q_prev <- function(ds, name, index) {
+  logq_grp = grp.inq.nc(ds, name)$self
+  qmean_chains <- cbind(var.get.nc(logq_grp, "mean_chain1")[,index], 
+                        var.get.nc(logq_grp, "mean_chain2")[,index], 
+                        var.get.nc(logq_grp, "mean_chain3")[,index])
+  
+  qsd_chains <- cbind(var.get.nc(logq_grp, "sd_chain1")[,index], 
+                      var.get.nc(logq_grp, "sd_chain2")[,index], 
+                      var.get.nc(logq_grp, "sd_chain3")[,index])
   
   qmean <- exp(rowMeans(qmean_chains, na.rm=TRUE))
   qsd <- exp(rowMeans(qsd_chains, na.rm=TRUE))
@@ -132,18 +228,18 @@ get_gb_q <- function(geobam) {
 #'
 #' @param sos_file string path to SoS file
 #' @param reach_id float reach identifier
-#' @param nt integer number of time steps
 #'
 #' @return named list of discharge priors
-get_sos_q <- function(sos_file, reach_id, nt) {
-  sos <- nc_open(sos_file)
-  reach_ids <- ncvar_get(sos, "reaches/reach_id")
+get_sos_q <- function(sos_file, reach_id) {
+  sos <- open.nc(sos_file)
+  r_grp = grp.inq.nc(sos, "reaches")$self
+  reach_ids <- var.get.nc(r_grp, "reach_id")
   index <- which(reach_ids==reach_id, arr.ind=TRUE)
-  qmean <- ncvar_get(sos, "reaches/mean_q")[index]
-  qsd <- exp(ncvar_get(sos, "reaches/logQ_sd")[index])
-  qmin <- ncvar_get(sos, "reaches/min_q")[index]
-  qmax <- ncvar_get(sos, "reaches/max_q")[index]
-  nc_close(sos)
+  qmean <- var.get.nc(r_grp, "mean_q")[index]
+  qsd <- exp(var.get.nc(r_grp, "logQ_sd")[index])
+  qmin <- var.get.nc(r_grp, "min_q")[index]
+  qmax <- var.get.nc(r_grp, "max_q")[index]
+  close.nc(sos)
   return(data.frame(sos_qmean = qmean,
                     sos_qsd = qsd,
                     sos_qmin = qmin,
@@ -152,6 +248,8 @@ get_sos_q <- function(sos_file, reach_id, nt) {
 }
 
 #' Get Integrator discharge data (priors and posteriors)
+#' 
+#' ## TODO use RNetCDF library
 #' 
 #' @param integrator_file path to integrator data file
 #' 

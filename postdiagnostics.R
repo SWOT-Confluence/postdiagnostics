@@ -20,7 +20,7 @@ run_flpe_diagnostics <- function(input_dir) {
   data <- get_data_flpe(reach_files$sos, reach_files$reach_id, input_dir)
   
   # PROCESSING
-  # diag_data_flpe <- run_diagnostics_flpe(data)
+  diag_data_flpe <- flpe_diagnostics(data$curr, data$prev, 2)    ## TODO decide what is appropriate tolerance
   
   # OUTPUT
   # write_data_flpe(diag_data)
@@ -52,6 +52,8 @@ run_integrator_diagnostics <- function(input_dir) {
 }
 
 #' Diagnostics on FLPE discharge data
+#' 
+#' TODO: ‘-’ only defined for equally-sized data frames (stability check)
 #'
 #' @param current_discharge dataframe of current discharge
 #' @param previous_discharge dataframe of previous discharge
@@ -86,7 +88,7 @@ flpe_diagnostics <- function(current_discharge, previous_discharge, tolerance) {
     return(realism_flag)
   }# end realism check 
   
-  #stability check
+  #stability check  ## TODO ‘-’ only defined for equally-sized data frames 
   stability_check=function(current_discharge, previous_discharge, algo_name, tolerance){
     #pass a tolerance in percent change to determine how much change is too much
     this_algo_q_now= select(current_discharge,paste0(algo_name,'_q'))
@@ -102,8 +104,10 @@ flpe_diagnostics <- function(current_discharge, previous_discharge, tolerance) {
   
   #run the checks
   realism_flags=sapply(algo_names,realism_check,current_discharge=current_discharge, simplify=T)
-  stability_flags= sapply(algo_names, stability_check, current_discharge=data, 
-                          previous_discharge=data+100,tolerance=difference_tolerance)
+  # stability_flags= sapply(algo_names, stability_check, current_discharge=data, 
+  #                         previous_discharge=data+100,tolerance=difference_tolerance)
+  stability_flags= sapply(algo_names, stability_check, current_discharge=current_discharge, 
+                          previous_discharge=previous_discharge, tolerance=difference_tolerance)
 }
 
 #' Diagnostics on Integrator discharge data
