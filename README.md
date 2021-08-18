@@ -7,7 +7,6 @@ TO DO:
 - Implement input ops for HiVDI and SAD
 - Implement run_diagnostics methods (FLPE and integrator) in "postdiagnostics.R" file
 - Implement write_data in "output.R" file
-- Update Integrator input operations to use RNetCDF library
 - Postdiagnostics.R error -> flpe_diagnostics: '-' only defined for equally-sized data frames (stability check)
 
 # installation

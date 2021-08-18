@@ -16,7 +16,7 @@ run_flpe_diagnostics <- function(input_dir) {
   reaches_json <- "reaches.json"
   # index <- strtoi(Sys.getenv("AWS_BATCH_JOB_ARRAY_INDEX")) + 1 ## TODO for container
   index <- 14
-  reach_files <- get_sos_file_flpe(reaches_json, input_dir, index)
+  reach_files <- get_input_data(reaches_json, input_dir, index)
   data <- get_data_flpe(reach_files$sos, reach_files$reach_id, input_dir)
   
   # PROCESSING
@@ -35,17 +35,17 @@ run_flpe_diagnostics <- function(input_dir) {
 #'
 #' @return ?
 run_integrator_diagnostics <- function(input_dir) {
-  # INPUT
+  # INPUT  
   # args <- commandArgs(trailingOnly=TRUE)
   # reaches_json <- ifelse(is.null(args), "reaches.json", args[1])
-  basin_json <- "basin.json"
+  reaches_json <- "reaches.json"
   # index <- strtoi(Sys.getenv("AWS_BATCH_JOB_ARRAY_INDEX")) + 1 ## TODO for container
-  index <- 4
-  integrator_file <- get_integrator_file(basin_json, input_dir, index)
-  data <- get_data_integrator(integrator_file)
+  index <- 14
+  reach_files <- get_input_data(reaches_json, input_dir, index)
+  data <- get_data_moi(reach_files$sos, reach_files$reach_id, input_dir)
   
   # PROCESSING
-  # diag_data_integrator <- run_diagnostics(data)
+  # diag_data_moi <- moi_diagnostics(data)
   
   # OUTPUT
   # write_data_integrator(diag_data)
@@ -115,6 +115,6 @@ flpe_diagnostics <- function(current_discharge, previous_discharge, tolerance) {
 #' @param data ??
 #'
 #' @return ??
-integrator_diagnostics <- function(data) {
+moi_diagnostics <- function(data) {
   ## Do Stuff
 }

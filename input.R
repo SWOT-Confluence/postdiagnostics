@@ -1,4 +1,4 @@
-#' Gets reference to SoS file
+#' Gets reference to reach identifier and SoS file
 #' 
 #' The reach identifier is determined from the index number which is used to 
 #' select an element from the JSON list. 
@@ -8,26 +8,11 @@
 #' @param index integer index for JSON file
 #'
 #' @return named list of reach id and associated SoS file
-get_sos_file_flpe <- function(reaches_json, input_dir, index) {
+get_input_data <- function(reaches_json, input_dir, index) {
   json_data <- fromJSON(file=file.path(input_dir, reaches_json, fsep=.Platform$file.sep))[[index]]
   return(list(reach_id=json_data$reach_id,
               sos=file.path(input_dir, "sos", json_data$sos, fsep=.Platform$file.sep)
   ))
-}
-
-#' Get integrator file for basin
-#' 
-#' The reach identifier is determined from the index number which is used to 
-#' select an element from the JSON list.  
-#'
-#' @param basin_json string path to JSON file with basin data
-#' @param input_dir string path to input directory
-#' @param index integer index for JSON file
-#'
-#' @return named list of reach files associate with reach identifier
-get_integrator_file <- function(basin_json, input_dir, index) {
-  json_data <- fromJSON(file=file.path(input_dir, basin_json, fsep=.Platform$file.sep))[[index]]
-  return(file.path(input_dir, "integrator", paste0(json_data$basin_id, "_integrator.nc"), fsep=.Platform$file.sep))
 }
 
 #' Get FLPE discharge data (priors and posteriors)
@@ -38,7 +23,7 @@ get_integrator_file <- function(basin_json, input_dir, index) {
 #' @param reach_id float reach identifier
 #' @param input_dir string path to input data (FLPE, SOS, JSON)
 #'
-#' @return named list with FLPE and SoS data
+#' @return named list of current Q dataframe and previous Q dataframe
 get_data_flpe <- function(sos_file, reach_id, input_dir) {
   
   curr_df <- get_flpe_current(reach_id, input_dir)
@@ -49,6 +34,8 @@ get_data_flpe <- function(sos_file, reach_id, input_dir) {
 }
 
 #' Get FLPE discharge output from current run
+#' 
+#' TODO Retreive Sad and HiVDI
 #'
 #' @param reach_id float reach identifier
 #' @param input_dir string path to input directory (FLPE, SOS, JSON)
@@ -71,7 +58,7 @@ get_flpe_current <- function(reach_id, input_dir) {
   # # hivdi TODO
   # file <- paste0(reach_id, "_hivdi.nc")
   # hivdi <- open.nc(file.path(input_dir, "flpe", "hivdi", file, fsep=.Platform$file.sep))
-  # hv_grp = grp.inq.nc(hivdi, "reach")$self
+  # hv_grp <- grp.inq.nc(hivdi, "reach")$self
   # hivdi_q <- temp_hivdi_q(gb_list$qmean, var.get.nc(hv_grp, "Q"))
   # close.nc(hivdi)
   
@@ -122,6 +109,8 @@ get_flpe_current <- function(reach_id, input_dir) {
 }
 
 #' Get geoBAM discharge posteriors for current run
+#' 
+#' TODO Retrieve Sad and HiVDI
 #'
 #' @param ds NetCDF dataset
 #' @param name str name of group
@@ -166,6 +155,8 @@ get_flpe_prev <- function(reach_id, sos_file) {
   gb_list <- get_gb_q_prev(sos, "geobam/logQ", index)
   
   # hivdi TODO
+  # hv_grp <- grp.inq.nc(sos, "hivdi")$self
+  # hv_q <- temp_hivdi_q(gb_list$qmean, var.get.nc(hv_grp, "Q"))
   
   # mommma
   mo_grp <- grp.inq.nc(sos, "momma")$self
@@ -247,33 +238,6 @@ get_sos_q <- function(sos_file, reach_id) {
   ))
 }
 
-#' Get Integrator discharge data (priors and posteriors)
-#' 
-#' ## TODO use RNetCDF library
-#' 
-#' @param integrator_file path to integrator data file
-#' 
-#' @return ?
-get_data_integrator <- function(integrator_file) {
-  integrator <- nc_open(integrator_file)
-  reach_ids <- ncvar_get(integrator, "reach_id")
-  qmean <- ncvar_get(integrator, "Qmean")
-  geobam <- ncvar_get(integrator, "geobam")
-  hivdi <- ncvar_get(integrator, "hivdi")
-  metroman <- ncvar_get(integrator, "metroman")
-  momma <- ncvar_get(integrator, "momma")
-  sad <- ncvar_get(integrator, "sad")
-  nc_close(integrator)
-  return(data.frame(reach_ids = reach_ids,
-                    qmean = qmean,
-                    geobam = geobam,
-                    hivdi = hivdi,
-                    metroman = metroman,
-                    momma = momma,
-                    sad = sad
-  ))
-}
-
 #' Insert invalid time steps into HiVDI discharge data
 #'
 #' @param gb_q vector of geoBAM discharge with NA
@@ -288,3 +252,186 @@ temp_hivdi_q <- function(gb_q, hv_q) {
   }
   return(hv_q)
 }
+
+#' Get MOI discharge data (priors and posteriors)
+#' 
+#' TODO: Add Sad results in when available
+#' 
+#' @param sos_file string path to SoS file
+#' @param reach_id float reach identifier
+#' @param input_dir string path to input data (FLPE, SOS, JSON)
+#' 
+#' @return named list of current moi dataframe and previous moi dataframe
+get_data_moi <- function(sos_file, reach_id, input_dir) {
+  
+  curr_df <- get_moi_current(reach_id, input_dir)
+  prev_df <- get_moi_prev(reach_id, sos_file)
+  sos_df <- get_sos_q(sos_file, reach_id)
+  sos_df <- subset(sos_df, select=-c(sos_qmean, sos_qsd))
+  
+  return(list(curr=cbind(curr_df, sos_df, row.names=NULL), prev=cbind(prev_df, sos_df, row.names=NULL)))
+}
+
+#' Get current MOI results
+#'
+#' @param reach_id float reach identifier
+#' @param input_dir string path to input directory (FLPE, SOS, JSON)
+#'
+#' @return dataframe of current MOI data
+get_moi_current <- function(reach_id, input_dir) {
+  
+  # time
+  file <- paste0(reach_id, "_SWOT.nc")
+  swot <- open.nc(file.path(input_dir, "swot", file, fsep=.Platform$file.sep))
+  nt = var.get.nc(swot, "nt")
+  close.nc(swot)
+  
+  # integrator file
+  file <- paste0(reach_id, "_integrator.nc")
+  moi <- open.nc(file.path(input_dir, "integrator", file, fsep=.Platform$file.sep))
+  
+  # geobam
+  gb_grp <- grp.inq.nc(moi, "geobam")$self
+  gb_q <- var.get.nc(gb_grp, "q")
+  gb_qmean_b <- var.get.nc(gb_grp, "qbar_reachScale")
+  gb_qmean_a <- var.get.nc(gb_grp, "qbar_basinScale")
+  
+  # hivdi TODO
+  hv_grp <- grp.inq.nc(moi, "hivdi")$self
+  hv_q <- var.get.nc(hv_grp, "q")
+  hv_qmean_b <- var.get.nc(hv_grp, "qbar_reachScale")
+  hv_qmean_a <- var.get.nc(hv_grp, "qbar_basinScale")
+  
+  # mommma
+  mo_grp <- grp.inq.nc(moi, "momma")$self
+  mo_q <- var.get.nc(mo_grp, "q")
+  mo_qmean_b <- var.get.nc(mo_grp, "qbar_reachScale")
+  mo_qmean_a <- var.get.nc(mo_grp, "qbar_basinScale")
+  
+  # sad TODO
+  # sd_grp <- grp.inq.nc(moi, "sad")$self
+  # sd_q <- var.get.nc(sd_grp, "q")
+  # sd_qmean_b <- var.get.nc(sd_grp, "qbar_reachScale")
+  # sd_qmean_a <- var.get.nc(sd_grp, "qbar_basinScale")
+  
+  # metroman
+  mm_grp <- grp.inq.nc(moi, "metroman")$self
+  mm_q <- var.get.nc(mm_grp, "q")
+  mm_qmean_b <- var.get.nc(mm_grp, "qbar_reachScale")
+  mm_qmean_a <- var.get.nc(mm_grp, "qbar_basinScale")
+  
+  
+  close.nc(moi)
+  # return(data.frame(nt = nt,    ## sad TODO
+  #                   gb_q = gb_q,
+  #                   gb_qmean_b = gb_qmean_b,
+  #                   gb_qmean_a = gb_qmean_a,
+  #                   hv_q = hv_q,
+  #                   hv_qmean_b = hv_qmean_b,
+  #                   hv_qmean_a = hv_qmean_a,
+  #                   mo_q = mo_q,
+  #                   mo_qmean_b = mo_qmean_b,
+  #                   mo_qmean_a = mo_qmean_a,
+  #                   mm_q = mm_q,
+  #                   mm_qmean_b = mm_qmean_b,
+  #                   mm_qmean_a = mm_qmean_a,
+  #                   sd_q = sd_q,
+  #                   sd_qmean_b = sd_qmean_b,
+  #                   sd_qmean_a = sd_qmean_a
+  # ))
+  return(data.frame(nt = nt,
+                    gb_q = gb_q,
+                    gb_qmean_b = gb_qmean_b,
+                    gb_qmean_a = gb_qmean_a,
+                    hv_q = hv_q,
+                    hv_qmean_b = hv_qmean_b,
+                    hv_qmean_a = hv_qmean_a,
+                    mo_q = mo_q,
+                    mo_qmean_b = mo_qmean_b,
+                    mo_qmean_a = mo_qmean_a,
+                    mm_q = mm_q,
+                    mm_qmean_b = mm_qmean_b,
+                    mm_qmean_a = mm_qmean_a
+  ))
+  
+}
+
+#' Return previous MOI results
+#'
+#' @param reach_id integer reach identifier
+#' @param sos_file str path to sos file
+#'
+#' @return dataframe of previous MOI data
+get_moi_prev <- function(reach_id, sos_file) {
+  # index
+  sos = open.nc(sos_file)
+  reach_ids = var.get.nc(sos, "num_reaches")
+  index = which(reach_ids==reach_id, arr.ind=TRUE)
+  
+  # time
+  nt = var.get.nc(sos, "time_steps")
+  
+  # geobam
+  gb_grp <- grp.inq.nc(sos, "moi/geobam")$self
+  gb_q <- var.get.nc(gb_grp, "q")[,index]
+  gb_qmean_b <- var.get.nc(gb_grp, "qbar_reachScale")[index]
+  gb_qmean_a <- var.get.nc(gb_grp, "qbar_basinScale")[index]
+  
+  # hivdi TODO
+  hv_grp <- grp.inq.nc(sos, "moi/hivdi")$self
+  hv_q <- var.get.nc(hv_grp, "q")[,index]
+  hv_qmean_b <- var.get.nc(hv_grp, "qbar_reachScale")[index]
+  hv_qmean_a <- var.get.nc(hv_grp, "qbar_basinScale")[index]
+  
+  # mommma
+  mo_grp <- grp.inq.nc(sos, "moi/momma")$self
+  mo_q <- var.get.nc(mo_grp, "q")[,index]
+  mo_qmean_b <- var.get.nc(mo_grp, "qbar_reachScale")[index]
+  mo_qmean_a <- var.get.nc(mo_grp, "qbar_basinScale")[index]
+  
+  # sad TODO
+  # sd_grp <- grp.inq.nc(sos, "moi/sad")$self
+  # sd_q <- var.get.nc(sd_grp, "q")[,index]
+  # sd_qmean_b <- var.get.nc(sd_grp, "qbar_reachScale")[index]
+  # sd_qmean_a <- var.get.nc(sd_grp, "qbar_basinScale")[index]
+  
+  # metroman
+  mm_grp <- grp.inq.nc(sos, "moi/metroman")$self
+  mm_q <- var.get.nc(mm_grp, "q")[,index]
+  mm_qmean_b <- var.get.nc(mm_grp, "qbar_reachScale")[index]
+  mm_qmean_a <- var.get.nc(mm_grp, "qbar_basinScale")[index]
+  
+  close.nc(sos)
+  # return(data.frame(nt = nt,    ## sad TODO
+  #                   gb_q = gb_q,
+  #                   gb_qmean_b = gb_qmean_b,
+  #                   gb_qmean_a = gb_qmean_a,
+  #                   hv_q = hv_q,
+  #                   hv_qmean_b = hv_qmean_b,
+  #                   hv_qmean_a = hv_qmean_a,
+  #                   mo_q = mo_q,
+  #                   mo_qmean_b = mo_qmean_b,
+  #                   mo_qmean_a = mo_qmean_a,
+  #                   mm_q = mm_q,
+  #                   mm_qmean_b = mm_qmean_b,
+  #                   mm_qmean_a = mm_qmean_a,
+  #                   sd_q = sd_q,
+  #                   sd_qmean_b = sd_qmean_b,
+  #                   sd_qmean_a = sd_qmean_a
+  # ))
+  return(data.frame(nt = nt,
+                    gb_q = gb_q,
+                    gb_qmean_b = gb_qmean_b,
+                    gb_qmean_a = gb_qmean_a,
+                    hv_q = hv_q,
+                    hv_qmean_b = hv_qmean_b,
+                    hv_qmean_a = hv_qmean_a,
+                    mo_q = mo_q,
+                    mo_qmean_b = mo_qmean_b,
+                    mo_qmean_a = mo_qmean_a,
+                    mm_q = mm_q,
+                    mm_qmean_b = mm_qmean_b,
+                    mm_qmean_a = mm_qmean_a
+  ))
+}
+
