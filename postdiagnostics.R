@@ -116,6 +116,6 @@ flpe_diagnostics <- function(current_discharge, previous_discharge, tolerance) {
 #' @param data ??
 #'
 #' @return ??
-moi_diagnostics <- function(data) {
+moi_diagnostics <- function(flpe_discharge, integrator_discharge, last_integrator_discharge) {
   ## Do Stuff
 }
