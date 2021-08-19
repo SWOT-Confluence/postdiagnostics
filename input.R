@@ -88,7 +88,7 @@ get_flpe_current <- function(reach_id, input_dir) {
   close.nc(metroman)
   
   # TODO
-  # return(data.frame(nt = nt,
+  # return(data.frame(date = nt,
   #                   geobam_q = gb_list$qmean,
   #                   geobam_u = gb_list$qsd,
   #                   hivdi_q = hivdi_q,
@@ -99,7 +99,7 @@ get_flpe_current <- function(reach_id, input_dir) {
   #                   metroman_u = metroman_u
   # ))
   
-  return(data.frame(nt = nt,
+  return(data.frame(date = nt,
                     geobam_q = gb_list$qmean,
                     geobam_u = gb_list$qsd,
                     hivdi_q = hivdi_q,
@@ -175,7 +175,7 @@ get_flpe_prev <- function(reach_id, sos_file) {
   mm_u <- var.get.nc(mm_grp, "q_u")[,index]
   
   close.nc(sos)
-  # return(data.frame(nt = nt,
+  # return(data.frame(date = nt,
   #                   geobam_q = gb_list$qmean,
   #                   geobam_u = gb_list$qsd,
   #                   hivdi_q = hivdi_q,
@@ -185,7 +185,7 @@ get_flpe_prev <- function(reach_id, sos_file) {
   #                   metroman_q = mm_q,
   #                   metroman_u = mm_u
   # ))
-  return(data.frame(nt = nt,
+  return(data.frame(date = nt,
                     geobam_q = gb_list$qmean,
                     geobam_u = gb_list$qsd,
                     hivdi_q = hv_q,
@@ -313,7 +313,7 @@ get_moi_current <- function(reach_id, input_dir) {
   
   
   close.nc(moi)
-  # return(data.frame(nt = nt,    ## sad TODO
+  # return(data.frame(date = nt,    ## sad TODO
   #                   gb_q = gb_q,
   #                   gb_qmean_b = gb_qmean_b,
   #                   gb_qmean_a = gb_qmean_a,
@@ -330,7 +330,7 @@ get_moi_current <- function(reach_id, input_dir) {
   #                   sd_qmean_b = sd_qmean_b,
   #                   sd_qmean_a = sd_qmean_a
   # ))
-  return(data.frame(nt = nt,
+  return(data.frame(date = nt,
                     geobam_q = gb_q,
                     gb_qmean_b = gb_qmean_b,
                     gb_qmean_a = gb_qmean_a,
@@ -395,7 +395,7 @@ get_moi_prev <- function(reach_id, sos_file) {
   mm_qmean_a <- var.get.nc(mm_grp, "qbar_basinScale")[index]
   
   close.nc(sos)
-  # return(data.frame(nt = nt,    ## sad TODO
+  # return(data.frame(date = nt,    ## sad TODO
   #                   gb_q = gb_q,
   #                   gb_qmean_b = gb_qmean_b,
   #                   gb_qmean_a = gb_qmean_a,
@@ -412,7 +412,7 @@ get_moi_prev <- function(reach_id, sos_file) {
   #                   sd_qmean_b = sd_qmean_b,
   #                   sd_qmean_a = sd_qmean_a
   # ))
-  return(data.frame(nt = nt,
+  return(data.frame(date = nt,
                     geobam_q = gb_q,
                     gb_qmean_b = gb_qmean_b,
                     gb_qmean_a = gb_qmean_a,
