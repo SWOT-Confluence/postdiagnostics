@@ -35,7 +35,7 @@ get_data_flpe <- function(sos_file, reach_id, input_dir) {
 
 #' Get FLPE discharge output from current run
 #' 
-#' TODO Retreive Sad and HiVDI
+#' TODO Retreive Sad
 #'
 #' @param reach_id float reach identifier
 #' @param input_dir string path to input directory (FLPE, SOS, JSON)
@@ -55,12 +55,12 @@ get_flpe_current <- function(reach_id, input_dir) {
   gb_list <- get_gb_q_cur(geobam, "logQ")
   close.nc(geobam)
   
-  # # hivdi TODO
-  # file <- paste0(reach_id, "_hivdi.nc")
-  # hivdi <- open.nc(file.path(input_dir, "flpe", "hivdi", file, fsep=.Platform$file.sep))
-  # hv_grp <- grp.inq.nc(hivdi, "reach")$self
-  # hivdi_q <- temp_hivdi_q(gb_list$qmean, var.get.nc(hv_grp, "Q"))
-  # close.nc(hivdi)
+  # hivdi
+  file <- paste0(reach_id, "_hivdi.nc")
+  hivdi <- open.nc(file.path(input_dir, "flpe", "hivdi", file, fsep=.Platform$file.sep))
+  hv_grp <- grp.inq.nc(hivdi, "reach")$self
+  hivdi_q <- var.get.nc(hv_grp, "Q")
+  close.nc(hivdi)
   
   # momma
   file <- paste0(reach_id, "_momma.nc")
@@ -68,7 +68,7 @@ get_flpe_current <- function(reach_id, input_dir) {
   momma_q <- var.get.nc(momma, "Q")
   close.nc(momma)
   
-  # # sad TODO
+  # sad TODO
   # file <- paste0(reach_id, "_sad.nc")
   # sad <- open.nc(file.path(input_dir, "flpe", "sad", file, fsep=.Platform$file.sep))
   # sad_q <- var.get.nc(sad, "Qa")
@@ -102,6 +102,7 @@ get_flpe_current <- function(reach_id, input_dir) {
   return(data.frame(nt = nt,
                     geobam_q = gb_list$qmean,
                     geobam_u = gb_list$qsd,
+                    hivdi_q = hivdi_q,
                     momma_q = momma_q,
                     metroman_q = metroman_q,
                     metroman_u = metroman_u
@@ -136,6 +137,8 @@ get_gb_q_cur <- function(ds, name) {
 }
 
 #' Get FLPE algorithm discharge from previous run
+#' 
+#' TODO Retrieve Sad Q
 #'
 #' @param reach_id integer reach identifier
 #' @param sos_file str path to sos file
@@ -154,15 +157,17 @@ get_flpe_prev <- function(reach_id, sos_file) {
   # geobam
   gb_list <- get_gb_q_prev(sos, "geobam/logQ", index)
   
-  # hivdi TODO
-  # hv_grp <- grp.inq.nc(sos, "hivdi")$self
-  # hv_q <- temp_hivdi_q(gb_list$qmean, var.get.nc(hv_grp, "Q"))
+  # hivdi
+  hv_grp <- grp.inq.nc(sos, "hivdi")$self
+  hv_q <- var.get.nc(hv_grp, "Q")[,index]
   
   # mommma
   mo_grp <- grp.inq.nc(sos, "momma")$self
   mo_q <- var.get.nc(mo_grp, "Q")[,index]
   
   # sad TODO
+  # sd_grp <- grp.inq.nc(sos, "sad")$self
+  # sd_q <- var.get.nc(sd_grp, "Q")[,index]
   
   # metroman
   mm_grp <- grp.inq.nc(sos, "metroman")$self
@@ -183,6 +188,7 @@ get_flpe_prev <- function(reach_id, sos_file) {
   return(data.frame(nt = nt,
                     geobam_q = gb_list$qmean,
                     geobam_u = gb_list$qsd,
+                    hivdi_q = hv_q,
                     momma_q = mo_q,
                     metroman_q = mm_q,
                     metroman_u = mm_u
@@ -238,21 +244,6 @@ get_sos_q <- function(sos_file, reach_id) {
   ))
 }
 
-#' Insert invalid time steps into HiVDI discharge data
-#'
-#' @param gb_q vector of geoBAM discharge with NA
-#' @param hv_q vector of HiVDI discharge with no NA
-#'
-#' @return
-temp_hivdi_q <- function(gb_q, hv_q) {
-  
-  indexes <- which(is.na(gb_q))
-  for (index in indexes) {
-    hv_q <- append(hv_q, NA, after=index-1)
-  }
-  return(hv_q)
-}
-
 #' Get MOI discharge data (priors and posteriors)
 #' 
 #' TODO: Add Sad results in when available
@@ -288,7 +279,7 @@ get_moi_current <- function(reach_id, input_dir) {
   
   # integrator file
   file <- paste0(reach_id, "_integrator.nc")
-  moi <- open.nc(file.path(input_dir, "integrator", file, fsep=.Platform$file.sep))
+  moi <- open.nc(file.path(input_dir, "moi", file, fsep=.Platform$file.sep))
   
   # geobam
   gb_grp <- grp.inq.nc(moi, "geobam")$self
@@ -340,16 +331,16 @@ get_moi_current <- function(reach_id, input_dir) {
   #                   sd_qmean_a = sd_qmean_a
   # ))
   return(data.frame(nt = nt,
-                    gb_q = gb_q,
+                    geobam_q = gb_q,
                     gb_qmean_b = gb_qmean_b,
                     gb_qmean_a = gb_qmean_a,
-                    hv_q = hv_q,
+                    hivdi_q = hv_q,
                     hv_qmean_b = hv_qmean_b,
                     hv_qmean_a = hv_qmean_a,
-                    mo_q = mo_q,
+                    momma_q = mo_q,
                     mo_qmean_b = mo_qmean_b,
                     mo_qmean_a = mo_qmean_a,
-                    mm_q = mm_q,
+                    metroman_q = mm_q,
                     mm_qmean_b = mm_qmean_b,
                     mm_qmean_a = mm_qmean_a
   ))
@@ -357,6 +348,8 @@ get_moi_current <- function(reach_id, input_dir) {
 }
 
 #' Return previous MOI results
+#' 
+#' TODO Retrieve Sad Q
 #'
 #' @param reach_id integer reach identifier
 #' @param sos_file str path to sos file
@@ -377,7 +370,7 @@ get_moi_prev <- function(reach_id, sos_file) {
   gb_qmean_b <- var.get.nc(gb_grp, "qbar_reachScale")[index]
   gb_qmean_a <- var.get.nc(gb_grp, "qbar_basinScale")[index]
   
-  # hivdi TODO
+  # hivdi
   hv_grp <- grp.inq.nc(sos, "moi/hivdi")$self
   hv_q <- var.get.nc(hv_grp, "q")[,index]
   hv_qmean_b <- var.get.nc(hv_grp, "qbar_reachScale")[index]
@@ -420,16 +413,16 @@ get_moi_prev <- function(reach_id, sos_file) {
   #                   sd_qmean_a = sd_qmean_a
   # ))
   return(data.frame(nt = nt,
-                    gb_q = gb_q,
+                    geobam_q = gb_q,
                     gb_qmean_b = gb_qmean_b,
                     gb_qmean_a = gb_qmean_a,
-                    hv_q = hv_q,
+                    hivdi_q = hv_q,
                     hv_qmean_b = hv_qmean_b,
                     hv_qmean_a = hv_qmean_a,
-                    mo_q = mo_q,
+                    momma_q = mo_q,
                     mo_qmean_b = mo_qmean_b,
                     mo_qmean_a = mo_qmean_a,
-                    mm_q = mm_q,
+                    metroman_q = mm_q,
                     mm_qmean_b = mm_qmean_b,
                     mm_qmean_a = mm_qmean_a
   ))
