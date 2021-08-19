@@ -91,7 +91,8 @@ flpe_diagnostics <- function(current_discharge, previous_discharge, tolerance) {
   #stability check  ## TODO ‘-’ only defined for equally-sized data frames 
   stability_check=function(current_discharge, previous_discharge, algo_name, tolerance){
     #pass a tolerance in percent change to determine how much change is too much
-    this_algo_q_now= select(current_discharge,paste0(algo_name,'_q'))
+    this_algo_q_now= select(current_discharge,paste0(algo_name,'_q')) %>%
+    dplyr::filter(date = date %in% previous_discharge$date)
     this_algo_q_then= select(previous_discharge,paste0(algo_name,'_q'))
     
     stability_flag=0
