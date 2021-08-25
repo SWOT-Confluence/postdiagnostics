@@ -22,11 +22,12 @@ get_input_data <- function(reaches_json, input_dir, index) {
 #' @param sos_file string path to SoS file
 #' @param reach_id float reach identifier
 #' @param input_dir string path to input data (FLPE, SOS, JSON)
+#' @param flpe_dir string path to directory that contains reach-level flpe data
 #'
 #' @return named list of current Q dataframe and previous Q dataframe
-get_data_flpe <- function(sos_file, reach_id, input_dir) {
+get_data_flpe <- function(sos_file, reach_id, input_dir, flpe_dir) {
   
-  curr_df <- get_flpe_current(reach_id, input_dir)
+  curr_df <- get_flpe_current(reach_id, input_dir, flpe_dir)
   prev_df <- get_flpe_prev(reach_id, sos_file)
   sos_df <- get_sos_q(sos_file, reach_id)
   
@@ -39,9 +40,10 @@ get_data_flpe <- function(sos_file, reach_id, input_dir) {
 #'
 #' @param reach_id float reach identifier
 #' @param input_dir string path to input directory (FLPE, SOS, JSON)
+#' @param flpe_dir string path to directory that contains reach-level flpe data
 #'
 #' @return dataframe of current FLPE discharge data
-get_flpe_current <- function(reach_id, input_dir) {
+get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
   
   # time
   file <- paste0(reach_id, "_SWOT.nc")
@@ -51,32 +53,32 @@ get_flpe_current <- function(reach_id, input_dir) {
   
   # geobam
   file <- paste0(reach_id, "_geobam.nc")
-  geobam <- open.nc(file.path(input_dir, "flpe", "geobam", file, fsep=.Platform$file.sep))
+  geobam <- open.nc(file.path(flpe_dir, "geobam", file, fsep=.Platform$file.sep))
   gb_list <- get_gb_q_cur(geobam, "logQ")
   close.nc(geobam)
   
   # hivdi
   file <- paste0(reach_id, "_hivdi.nc")
-  hivdi <- open.nc(file.path(input_dir, "flpe", "hivdi", file, fsep=.Platform$file.sep))
+  hivdi <- open.nc(file.path(flpe_dir, "hivdi", file, fsep=.Platform$file.sep))
   hv_grp <- grp.inq.nc(hivdi, "reach")$self
   hivdi_q <- var.get.nc(hv_grp, "Q")
   close.nc(hivdi)
   
   # momma
   file <- paste0(reach_id, "_momma.nc")
-  momma <- open.nc(file.path(input_dir, "flpe", "momma", file, fsep=.Platform$file.sep))
+  momma <- open.nc(file.path(flpe_dir, "momma", file, fsep=.Platform$file.sep))
   momma_q <- var.get.nc(momma, "Q")
   close.nc(momma)
   
   # sad TODO
   # file <- paste0(reach_id, "_sad.nc")
-  # sad <- open.nc(file.path(input_dir, "flpe", "sad", file, fsep=.Platform$file.sep))
+  # sad <- open.nc(file.path(flpe_dir, "sad", file, fsep=.Platform$file.sep))
   # sad_q <- var.get.nc(sad, "Qa")
   # sad_u <- var.get.nc(sad, "Q_u")
   # close.nc(sad)
   
   # metroman
-  file <- list.files(path=file.path(input_dir, "flpe", "metroman", fsep=.Platform$file.sep), 
+  file <- list.files(path=file.path(flpe_dir, "metroman", fsep=.Platform$file.sep), 
                      pattern=paste0(".*", reach_id, ".*", "_metroman\\.nc"), 
                      recursive=TRUE, 
                      full.names=TRUE)
@@ -251,11 +253,12 @@ get_sos_q <- function(sos_file, reach_id) {
 #' @param sos_file string path to SoS file
 #' @param reach_id float reach identifier
 #' @param input_dir string path to input data (FLPE, SOS, JSON)
+#' @param moi_dir string path to directory that contains basin-level moi data
 #' 
 #' @return named list of current moi dataframe and previous moi dataframe
-get_data_moi <- function(sos_file, reach_id, input_dir) {
+get_data_moi <- function(sos_file, reach_id, input_dir, moi_dir) {
   
-  curr_df <- get_moi_current(reach_id, input_dir)
+  curr_df <- get_moi_current(reach_id, input_dir, moi_dir)
   prev_df <- get_moi_prev(reach_id, sos_file)
   sos_df <- get_sos_q(sos_file, reach_id)
   sos_df <- subset(sos_df, select=-c(sos_qmean, sos_qsd))
@@ -267,9 +270,10 @@ get_data_moi <- function(sos_file, reach_id, input_dir) {
 #'
 #' @param reach_id float reach identifier
 #' @param input_dir string path to input directory (FLPE, SOS, JSON)
+#' @param moi_dir string path to directory that contains basin-level moi data
 #'
 #' @return dataframe of current MOI data
-get_moi_current <- function(reach_id, input_dir) {
+get_moi_current <- function(reach_id, input_dir, moi_dir) {
   
   # time
   file <- paste0(reach_id, "_SWOT.nc")
@@ -279,7 +283,7 @@ get_moi_current <- function(reach_id, input_dir) {
   
   # integrator file
   file <- paste0(reach_id, "_integrator.nc")
-  moi <- open.nc(file.path(input_dir, "moi", file, fsep=.Platform$file.sep))
+  moi <- open.nc(file.path(moi_dir, file, fsep=.Platform$file.sep))
   
   # geobam
   gb_grp <- grp.inq.nc(moi, "geobam")$self
