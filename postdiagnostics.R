@@ -186,4 +186,6 @@ moi_prepost_check <- function(current_integrator, flpe_discharge, algo_name, tol
   if (any(  abs(((integrator_q- flpe_q)/integrator_q)*100) > tolerance,
             na.rm=T  )  ){
     prepost_flag=1}
+  
+  return(prepost_flag)
 }
