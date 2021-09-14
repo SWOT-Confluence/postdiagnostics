@@ -35,8 +35,6 @@ get_data_flpe <- function(sos_file, reach_id, input_dir, flpe_dir) {
 }
 
 #' Get FLPE discharge output from current run
-#' 
-#' TODO Retreive Sad
 #'
 #' @param reach_id float reach identifier
 #' @param input_dir string path to input directory (FLPE, SOS, JSON)
@@ -71,11 +69,11 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
   close.nc(momma)
   
   # sad TODO
-  # file <- paste0(reach_id, "_sad.nc")
-  # sad <- open.nc(file.path(flpe_dir, "sad", file, fsep=.Platform$file.sep))
-  # sad_q <- var.get.nc(sad, "Qa")
-  # sad_u <- var.get.nc(sad, "Q_u")
-  # close.nc(sad)
+  file <- paste0(reach_id, "_sad.nc")
+  sad <- open.nc(file.path(flpe_dir, "sad", file, fsep=.Platform$file.sep))
+  sad_q <- var.get.nc(sad, "Qa")
+  sad_u <- var.get.nc(sad, "Q_u")
+  close.nc(sad)
   
   # metroman
   file <- list.files(path=file.path(flpe_dir, "metroman", fsep=.Platform$file.sep), 
@@ -89,26 +87,25 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
   metroman_u <- var.get.nc(metroman, "q_u")[,index]
   close.nc(metroman)
   
-  # TODO
-  # return(data.frame(date = nt,
-  #                   geobam_q = gb_list$qmean,
-  #                   geobam_u = gb_list$qsd,
-  #                   hivdi_q = hivdi_q,
-  #                   momma_q = momma_q,
-  #                   sad_q = sad_q,
-  #                   sad_u = sad_u,
-  #                   metroman_q = metroman_q,
-  #                   metroman_u = metroman_u
-  # ))
-  
   return(data.frame(date = nt,
                     geobam_q = gb_list$qmean,
                     geobam_u = gb_list$qsd,
                     hivdi_q = hivdi_q,
                     momma_q = momma_q,
+                    sad_q = sad_q,
+                    sad_u = sad_u,
                     metroman_q = metroman_q,
                     metroman_u = metroman_u
   ))
+  
+  # return(data.frame(date = nt,
+  #                   geobam_q = gb_list$qmean,
+  #                   geobam_u = gb_list$qsd,
+  #                   hivdi_q = hivdi_q,
+  #                   momma_q = momma_q,
+  #                   metroman_q = metroman_q,
+  #                   metroman_u = metroman_u
+  # ))
 }
 
 #' Get geoBAM discharge posteriors for current run
@@ -139,8 +136,6 @@ get_gb_q_cur <- function(ds, name) {
 }
 
 #' Get FLPE algorithm discharge from previous run
-#' 
-#' TODO Retrieve Sad Q
 #'
 #' @param reach_id integer reach identifier
 #' @param sos_file str path to sos file
@@ -150,11 +145,12 @@ get_flpe_prev <- function(reach_id, sos_file) {
   
   # index
   sos = open.nc(sos_file)
-  reach_ids = var.get.nc(sos, "num_reaches")
+  r_grp = grp.inq.nc(sos, "reaches")$self
+  reach_ids = var.get.nc(r_grp, "reach_id")
   index = which(reach_ids==reach_id, arr.ind=TRUE)
   
   # time
-  nt = var.get.nc(sos, "time_steps")
+  nt = var.get.nc(sos, "time")
   
   # geobam
   gb_list <- get_gb_q_prev(sos, "geobam/logQ", index)
@@ -167,9 +163,10 @@ get_flpe_prev <- function(reach_id, sos_file) {
   mo_grp <- grp.inq.nc(sos, "momma")$self
   mo_q <- var.get.nc(mo_grp, "Q")[,index]
   
-  # sad TODO
-  # sd_grp <- grp.inq.nc(sos, "sad")$self
-  # sd_q <- var.get.nc(sd_grp, "Q")[,index]
+  # sad
+  sd_grp <- grp.inq.nc(sos, "sad")$self
+  sd_q <- var.get.nc(sd_grp, "Qa")[,index]
+  sd_u <- var.get.nc(sd_grp, "Q_u")[,index]
   
   # metroman
   mm_grp <- grp.inq.nc(sos, "metroman")$self
@@ -177,24 +174,24 @@ get_flpe_prev <- function(reach_id, sos_file) {
   mm_u <- var.get.nc(mm_grp, "q_u")[,index]
   
   close.nc(sos)
-  # return(data.frame(date = nt,
-  #                   geobam_q = gb_list$qmean,
-  #                   geobam_u = gb_list$qsd,
-  #                   hivdi_q = hivdi_q,
-  #                   momma_q = mo_q,
-  #                   sad_q = sad_q,
-  #                   sad_u = sad_u,
-  #                   metroman_q = mm_q,
-  #                   metroman_u = mm_u
-  # ))
   return(data.frame(date = nt,
                     geobam_q = gb_list$qmean,
                     geobam_u = gb_list$qsd,
                     hivdi_q = hv_q,
                     momma_q = mo_q,
+                    sad_q = sd_q,
+                    sad_u = sd_u,
                     metroman_q = mm_q,
                     metroman_u = mm_u
   ))
+  # return(data.frame(date = nt,
+  #                   geobam_q = gb_list$qmean,
+  #                   geobam_u = gb_list$qsd,
+  #                   hivdi_q = hv_q,
+  #                   momma_q = mo_q,
+  #                   metroman_q = mm_q,
+  #                   metroman_u = mm_u
+  # ))
 }
 
 #' Get geoBAM discharge posteriors for previous run

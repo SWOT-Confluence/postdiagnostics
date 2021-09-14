@@ -8,10 +8,12 @@ source("output.R")
 #' 
 #' @param input_dir string path to directory that contains input data
 #' @param flpe_dir string path to directory that contains reach-level flpe data
+#' @param reaches_json str name of JSON file with reach data
 #' @param output_dir string path to directory to write output to
 #' @param index integer index to locate reach data for
 #' @param tolerance ??
-run_flpe_diagnostics <- function(input_dir, flpe_dir, output_dir, index, tolerance) {
+run_flpe_diagnostics <- function(input_dir, flpe_dir, output_dir, reaches_json, 
+                                 index, tolerance) {
   # INPUT
   reach_files <- get_input_data(reaches_json, input_dir, index)
   data <- get_data_flpe(reach_files$sos, reach_files$reach_id, input_dir, flpe_dir)
@@ -36,8 +38,8 @@ flpe_diagnostics <- function(current_discharge, previous_discharge, tolerance) {
   #expands the code substantially unless I get overly fancy. I therefore decide to 
   #go needlessly fancy with an explicit name check and a lapply statment
   
-  # algo_names=c("geobam", "hivdi", "momma", "sad", "metroman")
-  algo_names=c("geobam", "hivdi", "momma", "metroman")
+  algo_names=c("geobam", "hivdi", "momma", "sad", "metroman")
+  # algo_names=c("geobam", "hivdi", "momma", "metroman")
   
   #run the checks
   realism_flags=sapply(algo_names, flpe_realism_check, current_discharge=current_discharge, simplify=T)

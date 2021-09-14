@@ -31,6 +31,6 @@ if (length(args) == 2) {
 # Run diagnostics
 # index <- strtoi(Sys.getenv("AWS_BATCH_JOB_ARRAY_INDEX")) + 1 ## TODO for container
 index <- 14
-run_flpe_diagnostics(input_dir, flpe_dir, output_dir, index, tolerance)
+run_flpe_diagnostics(input_dir, flpe_dir, output_dir, reaches_json, index, tolerance)
 end <- Sys.time()
 print(paste0("Execution time: ", end - start))
