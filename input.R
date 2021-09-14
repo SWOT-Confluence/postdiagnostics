@@ -145,8 +145,13 @@ get_flpe_prev <- function(reach_id, sos_file) {
   
   # index
   sos = open.nc(sos_file)
+<<<<<<< HEAD
   r_grp = grp.inq.nc(sos, "reaches")$self
   reach_ids = var.get.nc(r_grp, "reach_id")
+=======
+  reach_grp = grp.inq.nc(sos, "reaches")$self
+  reach_ids = var.get.nc(reach_grp, "reach_id")
+>>>>>>> a0ba7f1650fabe0d507709b1b9eed3bdac19d6c1
   index = which(reach_ids==reach_id, arr.ind=TRUE)
   
   # time
@@ -359,11 +364,12 @@ get_moi_current <- function(reach_id, input_dir, moi_dir) {
 get_moi_prev <- function(reach_id, sos_file) {
   # index
   sos = open.nc(sos_file)
-  reach_ids = var.get.nc(sos, "num_reaches")
+  reach_grp = grp.inq.nc(sos, "reaches")$self
+  reach_ids = var.get.nc(reach_grp, "reach_id")
   index = which(reach_ids==reach_id, arr.ind=TRUE)
   
   # time
-  nt = var.get.nc(sos, "time_steps")
+  nt = var.get.nc(sos, "time")
   
   # geobam
   gb_grp <- grp.inq.nc(sos, "moi/geobam")$self
@@ -428,4 +434,3 @@ get_moi_prev <- function(reach_id, sos_file) {
                     mm_qmean_a = mm_qmean_a
   ))
 }
-
