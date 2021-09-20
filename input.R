@@ -68,12 +68,19 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
   momma_q <- var.get.nc(momma, "Q")
   close.nc(momma)
   
-  # sad TODO
+  # sad 
   file <- paste0(reach_id, "_sad.nc")
   sad <- open.nc(file.path(flpe_dir, "sad", file, fsep=.Platform$file.sep))
   sad_q <- var.get.nc(sad, "Qa")
   sad_u <- var.get.nc(sad, "Q_u")
   close.nc(sad)
+  
+  # sic4dvar
+  file <- paste0(reach_id, "_sic4dvar.nc")
+  sv <- open.nc(file.path(flpe_dir, "sic4dvar", file, fsep=.Platform$file.sep))
+  sv_q5 <- var.get.nc(sv, "Qalgo5")
+  sv_q31 <- var.get.nc(sv, "Qalgo31")
+  close.nc(sv)
   
   # metroman
   file <- list.files(path=file.path(flpe_dir, "metroman", fsep=.Platform$file.sep), 
@@ -94,6 +101,8 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
                     momma_q = momma_q,
                     sad_q = sad_q,
                     sad_u = sad_u,
+                    sic4dvar5_q = sv_q5,
+                    sic4dvar31_q = sv_q31,
                     metroman_q = metroman_q,
                     metroman_u = metroman_u
   ))
@@ -109,8 +118,6 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
 }
 
 #' Get geoBAM discharge posteriors for current run
-#' 
-#' TODO Retrieve Sad and HiVDI
 #'
 #' @param ds NetCDF dataset
 #' @param name str name of group
@@ -168,6 +175,11 @@ get_flpe_prev <- function(reach_id, sos_file) {
   sd_q <- var.get.nc(sd_grp, "Qa")[,index]
   sd_u <- var.get.nc(sd_grp, "Q_u")[,index]
   
+  # sic4dvar
+  sv_grp <- grp.inq.nc(sos, "sic4dvar")$self
+  sv5_q <- var.get.nc(sv_grp, "Qalgo5")[,index]
+  sv31_q <- var.get.nc(sv_grp, "Qalgo31")[,index]
+  
   # metroman
   mm_grp <- grp.inq.nc(sos, "metroman")$self
   mm_q <- var.get.nc(mm_grp, "allq")[,index]
@@ -181,6 +193,8 @@ get_flpe_prev <- function(reach_id, sos_file) {
                     momma_q = mo_q,
                     sad_q = sd_q,
                     sad_u = sd_u,
+                    sic4dvar5_q = sv5_q,
+                    sic4dvar31_q = sv31_q,
                     metroman_q = mm_q,
                     metroman_u = mm_u
   ))
@@ -245,7 +259,7 @@ get_sos_q <- function(sos_file, reach_id) {
 
 #' Get MOI discharge data (priors and posteriors)
 #' 
-#' TODO: Add Sad results in when available
+#' TODO: Add Sad and SIC4DVar results in when available
 #' 
 #' @param sos_file string path to SoS file
 #' @param reach_id float reach identifier
@@ -288,7 +302,7 @@ get_moi_current <- function(reach_id, input_dir, moi_dir) {
   gb_qmean_b <- var.get.nc(gb_grp, "qbar_reachScale")
   gb_qmean_a <- var.get.nc(gb_grp, "qbar_basinScale")
   
-  # hivdi TODO
+  # hivdi
   hv_grp <- grp.inq.nc(moi, "hivdi")$self
   hv_q <- var.get.nc(hv_grp, "q")
   hv_qmean_b <- var.get.nc(hv_grp, "qbar_reachScale")
@@ -306,6 +320,12 @@ get_moi_current <- function(reach_id, input_dir, moi_dir) {
   # sd_qmean_b <- var.get.nc(sd_grp, "qbar_reachScale")
   # sd_qmean_a <- var.get.nc(sd_grp, "qbar_basinScale")
   
+  # sic4dvar TODO 5 vs. 31 algo ??
+  # sv_grp <- grp.inq.nc(moi, "sad")$self
+  # sv_q <- var.get.nc(sv_grp, "q")
+  # sv_qmean_b <- var.get.nc(sv_grp, "qbar_reachScale")
+  # sv_qmean_a <- var.get.nc(sv_grp, "qbar_basinScale")
+  
   # metroman
   mm_grp <- grp.inq.nc(moi, "metroman")$self
   mm_q <- var.get.nc(mm_grp, "q")
@@ -314,7 +334,7 @@ get_moi_current <- function(reach_id, input_dir, moi_dir) {
   
   
   close.nc(moi)
-  # return(data.frame(date = nt,    ## sad TODO
+  # return(data.frame(date = nt,    ## sad and sic4dvar TODO
   #                   gb_q = gb_q,
   #                   gb_qmean_b = gb_qmean_b,
   #                   gb_qmean_a = gb_qmean_a,
@@ -350,7 +370,7 @@ get_moi_current <- function(reach_id, input_dir, moi_dir) {
 
 #' Return previous MOI results
 #' 
-#' TODO Retrieve Sad Q
+#' TODO Retrieve Sad and SIC4DVar Q
 #'
 #' @param reach_id integer reach identifier
 #' @param sos_file str path to sos file
@@ -390,6 +410,12 @@ get_moi_prev <- function(reach_id, sos_file) {
   # sd_qmean_b <- var.get.nc(sd_grp, "qbar_reachScale")[index]
   # sd_qmean_a <- var.get.nc(sd_grp, "qbar_basinScale")[index]
   
+  # sic4dvar TODO
+  # sv_grp <- grp.inq.nc(sos, "moi/sic4dvar")$self
+  # sv_q <- var.get.nc(sv_grp, "q")[,index]
+  # sv_qmean_b <- var.get.nc(sv_grp, "qbar_reachScale")[index]
+  # sv_qmean_a <- var.get.nc(sv_grp, "qbar_basinScale")[index]
+  
   # metroman
   mm_grp <- grp.inq.nc(sos, "moi/metroman")$self
   mm_q <- var.get.nc(mm_grp, "q")[,index]
@@ -397,7 +423,7 @@ get_moi_prev <- function(reach_id, sos_file) {
   mm_qmean_a <- var.get.nc(mm_grp, "qbar_basinScale")[index]
   
   close.nc(sos)
-  # return(data.frame(date = nt,    ## sad TODO
+  # return(data.frame(date = nt,    ## sad and sic4dvar TODO
   #                   gb_q = gb_q,
   #                   gb_qmean_b = gb_qmean_b,
   #                   gb_qmean_a = gb_qmean_a,

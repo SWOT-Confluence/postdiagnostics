@@ -38,8 +38,7 @@ flpe_diagnostics <- function(current_discharge, previous_discharge, tolerance) {
   #expands the code substantially unless I get overly fancy. I therefore decide to 
   #go needlessly fancy with an explicit name check and a lapply statment
   
-  algo_names=c("geobam", "hivdi", "momma", "sad", "metroman")
-  # algo_names=c("geobam", "hivdi", "momma", "metroman")
+  algo_names=c("geobam", "hivdi", "momma", "sad", "metroman", "sic4dvar5", "sic4dvar31")
   
   #run the checks
   realism_flags=sapply(algo_names, flpe_realism_check, current_discharge=current_discharge, simplify=T)
