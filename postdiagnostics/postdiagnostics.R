@@ -38,7 +38,7 @@ flpe_diagnostics <- function(current_discharge, previous_discharge, tolerance) {
   #expands the code substantially unless I get overly fancy. I therefore decide to 
   #go needlessly fancy with an explicit name check and a lapply statment
   
-  algo_names=c("geobam", "hivdi", "momma", "sad", "metroman", "sic4dvar5", "sic4dvar31")
+  algo_names=c("geobam", "hivdi", "momma", "metroman", "sad", "sic4dvar5", "sic4dvar31")
   
   #run the checks
   realism_flags=sapply(algo_names, flpe_realism_check, current_discharge=current_discharge, simplify=T)
@@ -101,6 +101,10 @@ run_moi_diagnostics <- function(input_dir, flpe_dir, moi_dir, output_dir, index,
   flpe_data <- get_flpe_current(reach_files$reach_id, input_dir, flpe_dir)
   moi_data <- get_data_moi(reach_files$sos, reach_files$reach_id, input_dir, moi_dir)
   
+  # FORMAT FLPE DATA FOR DIAGS - currently selects algo31 for diagnostics
+  flpe_data <- subset(flpe_data, select=-c(sic4dvar5_q))
+  flpe_data <- flpe_data %>% rename(sic4dvar_q = sic4dvar31_q)
+  
   # PROCESSING
   diag_data_moi <- moi_diagnostics(flpe_data, moi_data$curr, moi_data$prev, tolerance)
   
@@ -109,8 +113,6 @@ run_moi_diagnostics <- function(input_dir, flpe_dir, moi_dir, output_dir, index,
 }
 
 #' Diagnostics on Integrator discharge data
-#' 
-#' TODO: Add Sad and Sic4DVar
 #'
 #' @param flpe_discharge reach-level FLPE discharge dataframe
 #' @param current_integrator current integrator discharge dataframe
@@ -126,8 +128,7 @@ moi_diagnostics <- function(flpe_discharge, current_integrator, previous_integra
   # "algoname_qmean_a" means discharge after integration
   # "sos_qmin" and "sos_qmax" are SoS priors
   
-  algo_names=c("geobam", "hivdi", "momma", "metroman")
-  # algo_names=c("geobam", "hivdi", "momma", "metroman", "sad", "sic4dvar")
+  algo_names=c("geobam", "hivdi", "momma", "metroman", "sad", "sic4dvar")
   
   realism_flags=sapply(algo_names, moi_realism_check, current_integrator=current_integrator, simplify=T)
   
