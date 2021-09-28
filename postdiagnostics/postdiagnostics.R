@@ -1,6 +1,3 @@
-source("input.R")
-source("output.R")
-
 #' Run FLPE diagnostics - not complete
 #' 
 #' Uses environment variable AWS_BATCH_JOB_ARRAY_INDEX as an index to reach
