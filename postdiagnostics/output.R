@@ -22,11 +22,11 @@ write_data_flpe <- function(diag_data_flpe, reach_id, output_dir) {
   var.put.nc(nc_out, "algo_names", names(diag_data_flpe$realism_flags))
   
   var.def.nc(nc_out, "realism_flags", "NC_INT", "num_algos")
-  att.put.nc(nc_out, "realism_flags", "_FILLVALUE", "NC_INT", fill)
+  att.put.nc(nc_out, "realism_flags", "_FillValue", "NC_INT", fill)
   var.put.nc(nc_out, "realism_flags", diag_data_flpe$realism_flags)
   
   var.def.nc(nc_out, "stability_flags", "NC_INT", "num_algos")
-  att.put.nc(nc_out, "stability_flags", "_FILLVALUE", "NC_INT", fill)
+  att.put.nc(nc_out, "stability_flags", "_FillValue", "NC_INT", fill)
   var.put.nc(nc_out, "stability_flags", diag_data_flpe$stability_flags)
   
   close.nc(nc_out)
@@ -56,15 +56,15 @@ write_data_moi <- function(diag_data_moi, reach_id, output_dir) {
   var.put.nc(nc_out, "algo_names", names(diag_data_moi$realism_flags))
   
   var.def.nc(nc_out, "realism_flags", "NC_INT", "num_algos")
-  att.put.nc(nc_out, "realism_flags", "_FILLVALUE", "NC_INT", fill)
+  att.put.nc(nc_out, "realism_flags", "_FillValue", "NC_INT", fill)
   var.put.nc(nc_out, "realism_flags", diag_data_moi$realism_flags)
   
   var.def.nc(nc_out, "stability_flags", "NC_INT", "num_algos")
-  att.put.nc(nc_out, "stability_flags", "_FILLVALUE", "NC_INT", fill)
+  att.put.nc(nc_out, "stability_flags", "_FillValue", "NC_INT", fill)
   var.put.nc(nc_out, "stability_flags", diag_data_moi$stability_flags)
   
   var.def.nc(nc_out, "prepost_flags", "NC_INT", "num_algos")
-  att.put.nc(nc_out, "prepost_flags", "_FILLVALUE", "NC_INT", fill)
+  att.put.nc(nc_out, "prepost_flags", "_FillValue", "NC_INT", fill)
   var.put.nc(nc_out, "prepost_flags", diag_data_moi$prepost_flags)
   
   close.nc(nc_out)
