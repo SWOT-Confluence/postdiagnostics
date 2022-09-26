@@ -1,10 +1,13 @@
-source("/app/postdiagnostics/input.R")
-source("/app/postdiagnostics/postdiagnostics.R")
-source("/app/postdiagnostics/output.R")
-
+# Libraries
 library(RNetCDF)
 library(dplyr)
 library(rjson)
+library(reticulate)
+
+# Program files
+source("/app/postdiagnostics/input.R")
+source("/app/postdiagnostics/postdiagnostics.R")
+source("/app/postdiagnostics/output.R")
 
 # Directories
 start <- Sys.time()
