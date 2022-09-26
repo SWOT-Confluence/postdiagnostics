@@ -20,8 +20,8 @@ RUN echo "America/New_York" | tee /etc/timezone \
 		tzdata \
     && locale-gen en_US.UTF-8 \
 	&& apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E298A3A825C0D65DFD57CBB651716619E084DAB9 \
-	&& . /etc/lsb-release \
-	&& echo "deb https://cloud.r-project.org/bin/linux/ubuntu ${DISTRIB_CODENAME}-cran40/" >> /etc/apt/sources.list
+	&& echo 'deb https://cloud.r-project.org/bin/linux/ubuntu focal-cran40/' >> /etc/apt/sources.list
+
 # STAGE 1 - R and R packages
 FROM stage0 as stage1
 RUN apt update && apt -y install \
@@ -45,7 +45,7 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/home/aw
         && unzip /home/awscliv2.zip -d /home \
         && /home/aws/install \
         && /usr/local/bin/aws configure set default.region us-west-2
-# COPY credentials /root/.aws/credentials
+COPY credentials /root/.aws/credentials
 
 # STAGE 4 - Copy files needed to run post diagnostics
 FROM stage3 as stage4
