@@ -19,7 +19,7 @@ RUN echo "America/New_York" | tee /etc/timezone \
 		libxml2-dev \
 		tzdata \
     && locale-gen en_US.UTF-8 \
-	&& apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E298A3A825C0D65DFD57CBB651716619E084DAB9 \
+	&& apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys E298A3A825C0D65DFD57CBB651716619E084DAB9 \
 	&& . /etc/lsb-release \
 	&& echo "deb https://cloud.r-project.org/bin/linux/ubuntu ${DISTRIB_CODENAME}-cran40/" >> /etc/apt/sources.list
 
@@ -39,24 +39,14 @@ FROM stage1 as stage2
 RUN apt update && apt -y install python3-pip \
 	&& pip install boto3
 
-# STAGE 3 - AWS CLI
+# STAGE 3 - Copy files needed to run post diagnostics
 FROM stage2 as stage3
-RUN apt update && apt -y install curl zip
-RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/home/awscliv2.zip" \
-        && unzip /home/awscliv2.zip -d /home \
-        && /home/aws/install \
-        && /usr/local/bin/aws configure set default.region us-west-2
-COPY credentials /root/.aws/credentials
-
-# STAGE 4 - Copy files needed to run post diagnostics
-FROM stage3 as stage4
 COPY ./postdiagnostics/ /app/postdiagnostics/
 
-# STAGE 5 - Execute algorithm
-FROM stage4 as stage5
+# STAGE 4 - Execute algorithm
+FROM stage3 as stage4
 LABEL version="1.0" \
 	description="Containerized postdiagnostics module (reach-level FLPE)." \
-	"confluence.contact"="ntebaldi@umass.edu" \
 	"algorithm.contact"="cjgleason@umass.edu"
-ENTRYPOINT [ "/usr/bin/Rscript",  "/app/postdiagnostics/run_flpe.R" ]
-# ENTRYPOINT [ "/usr/bin/Rscript",  "/app/postdiagnostics/run_moi.R" ]
+# ENTRYPOINT [ "/usr/bin/Rscript",  "/app/postdiagnostics/run_flpe.R" ]
+ENTRYPOINT [ "/usr/bin/Rscript",  "/app/postdiagnostics/run_moi.R" ]
