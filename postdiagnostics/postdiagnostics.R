@@ -28,7 +28,7 @@ run_flpe_diagnostics <- function(input_dir, flpe_dir, output_dir, reaches_json,
 #' @param previous_discharge dataframe of previous discharge
 #' @param tolerance ??
 #'
-#' @return list of flags for reach-level flpe algorithms
+#' @return named list of flags for reach-level flpe algorithms
 flpe_diagnostics <- function(current_discharge, previous_discharge, tolerance) {
   #in all these checks, I want to be lazy and compare by column position, but that 
   #isn't a good idea in case they move. Therefore, I need to search on name, which
@@ -50,11 +50,12 @@ flpe_diagnostics <- function(current_discharge, previous_discharge, tolerance) {
   #                   metroman_q = metroman_q,
   #                   metroman_u = metroman_u
   # ))
+
   headers = colnames(current_discharge)
-  print('headers')
-  print(headers)
 
   algo_names = list()
+
+  # created dynamic algo names list by referencing the headers of current discharge
 
   if ('sic4dvar5_q'%in%headers){
     algo_names = append(algo_names, list("sic4dvar5", "sic4dvar31"))
@@ -75,24 +76,19 @@ flpe_diagnostics <- function(current_discharge, previous_discharge, tolerance) {
   if ('geobam_q'%in%headers){
     algo_names = append(algo_names, 'geobam')
   }
-  
-  print('realism check algo names')
-  print(algo_names)
-  
+
   #run the checks
   realism_flags=sapply(algo_names, flpe_realism_check, current_discharge=current_discharge, simplify=T)
   # stability_flags= sapply(algo_names, stability_check, current_discharge=data, 
   #                         previous_discharge=data+100,tolerance=difference_tolerance)
   stability_flags= sapply(algo_names, flpe_stability_check, current_discharge=current_discharge, 
                           previous_discharge=previous_discharge, tolerance=tolerance)
+  
+  # bugfix, later in the script we call names for these lists to add them
+  # to the output file
   names(stability_flags) = algo_names
   names(realism_flags) = algo_names
-  print('realizm flags, one of the below should have names')
 
-  print(realism_flags)
-  print(names(realism_flags))
-  print('stability flags')
-  print((stability_flags))
   return(list(realism_flags=realism_flags, stability_flags=stability_flags))
 }
 
@@ -100,6 +96,7 @@ flpe_diagnostics <- function(current_discharge, previous_discharge, tolerance) {
 flpe_realism_check <- function(current_discharge, algo_name){
   realism_flag=0
   this_algo_q= select(current_discharge,paste0(algo_name,'_q'))
+  # bugfix, change undefined data varaible to current discharge
   if (paste0(algo_name,'_u') %in% names(current_discharge)){ #does explicit uncertainty exist?
     this_algo_u= select(current_discharge,paste0(algo_name,'_u'))} else{
       
@@ -111,7 +108,6 @@ flpe_realism_check <- function(current_discharge, algo_name){
   ){
     realism_flag=1
   }  
-  print(realism_flag)
   return(realism_flag)
 }# end realism check 
 
@@ -119,9 +115,8 @@ flpe_realism_check <- function(current_discharge, algo_name){
 flpe_stability_check <- function(current_discharge, previous_discharge, algo_name, tolerance){
   #pass a tolerance in percent change to determine how much change is too much
 
+  # separated selection from filtering for readability and error catching
   this_algo_q_now = select(current_discharge,paste0(algo_name,'_q')) 
-  print(this_algo_q_now)
-  
   this_algo_q_now = this_algo_q_now%>%
     dplyr::filter(current_discharge$date %in% previous_discharge$date)
 
@@ -131,11 +126,6 @@ flpe_stability_check <- function(current_discharge, previous_discharge, algo_nam
     dplyr::filter(previous_discharge$date %in% current_discharge$date)
   
   stability_flag=0
-  print('then')
-  print(this_algo_q_then)
-  print('now')
-  print(this_algo_q_now)
-
 
   test1 = this_algo_q_now- this_algo_q_then
   test2 = test1/this_algo_q_now
@@ -143,10 +133,6 @@ flpe_stability_check <- function(current_discharge, previous_discharge, algo_nam
   if (any(  abs(test2*100) > tolerance,
             na.rm=T  )  ){
     stability_flag=1}
-
-  # if (any(  abs(((this_algo_q_now- this_algo_q_then)/this_algo_q_now)*100) > tolerance,
-  #           na.rm=T  )  ){
-  #   stability_flag=1}
   
   return(stability_flag)
 }

@@ -3,7 +3,7 @@ VERS_LENGTH = 4    # length of SoS version identifier
 CONT_LOOKUP = list("af", "eu", "as", "as", "oc", "sa", "na", "na", "na")    # Numeric continent identifier
 S3_BUCKET = "confluence-sos"   # S3 SoS Bucket identifier
 S3_TEMP = "/app/postdiagnostics"    # Path to store temporary SOS file
-RESULT_SUFFIX = "_sword_v15_SOS_results.nc"    # Result file suffix
+RESULT_SUFFIX = "_sword_v15_SOS_results.nc"    # Result file suffix, updated to sword 15
 FLOAT_FILL = -999999999999    # NetCDF fill value for float variables
 VENV_PATH = "/app/env"    # Path to Python interpreter
 PYTHON_FILE = "/app/postdiagnostics/get_result_data.py"
@@ -39,17 +39,11 @@ get_data_flpe <- function(sos_file, reach_id, input_dir, flpe_dir) {
   
   outlist <- get_flpe_current(reach_id, input_dir, flpe_dir)
   curr_df = outlist$df
-  print(curr_df)
-  write.csv(curr_df, "/mnt/data/output/curr_df.csv", row.names=FALSE)
   success_list = outlist$success_list
   prev_df <- get_flpe_prev(reach_id, sos_file, success_list)
-  write.csv(prev_df, "/mnt/data/output/prev_df.csv", row.names=FALSE)
   sos_df <- get_sos_q(sos_file, reach_id)
-  write.csv(sos_df, "/mnt/data/output/sos_df.csv", row.names=FALSE)
   curr=cbind(curr_df, sos_df)
-  write.csv(curr, "/mnt/data/output/curr.csv", row.names=FALSE)
   prev=cbind(prev_df, sos_df)
-  write.csv(prev, "/mnt/data/output/prev.csv", row.names=FALSE)
   return(list(curr= curr, prev = prev))
 }
 
@@ -61,16 +55,9 @@ get_data_flpe <- function(sos_file, reach_id, input_dir, flpe_dir) {
 #'
 #' @return dataframe of current FLPE discharge data
 
-
-# if (test_expression) {
-# statement1
-# } else {
-# statement2
-# }
-
 get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
 
-  
+  # example output dataframe
   # return(data.frame(date = nt,
   #                   geobam_q = geobam_q,
   #                   hivdi_q = hivdi_q,
@@ -83,14 +70,21 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
   #                   metroman_u = metroman_u
   # ))
 
-  # will keep track of what algos were ran
+  # will keep track of what algos were ran in previous modules
+  # this list will be passed between functions so we know what algos to run on
   success_list = list()
+
+  # Data list in all functions will be a dynamic named list 
+  # to build a dataframe out of
   data_list = list()
 
+  # changed file reserved keyword to filepath throughout
+  # 
   # time
   filename <- paste0(reach_id, "_SWOT.nc")
   filepath <- file.path(input_dir, "swot", filename, fsep=.Platform$file.sep)
-  print(filepath)
+
+  # ensures that we can find the file to run on
   if (file.exists(filepath)){
     swot <- open.nc(filepath)
     r_grp = grp.inq.nc(swot, "reach")$self
@@ -103,7 +97,11 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
     stop("Could not find input file, be sure the reaches.json is pointing to processed data.")
   }
 
-  
+  # we check and see if there is an output file for each algo
+  # if there is then we read the data into the named list
+  # and we add the algo to the successful list
+  # so that we know to run the rest of the script on it
+
   # geobam
   filename <- paste0(reach_id, "_geobam.nc")
   filepath <- file.path(flpe_dir, "geobam", filename, fsep=.Platform$file.sep)
@@ -235,6 +233,7 @@ get_gb_q_cur <- function(ds, name) {
 #'
 #' @param reach_id integer reach identifier
 #' @param sos_file str path to sos file
+#' @param success_list a list of algo names to run on
 #'
 #' @return dataframe of previous FLPE discharge data
 get_flpe_prev <- function(reach_id, sos_file, success_list) {
@@ -251,11 +250,11 @@ get_flpe_prev <- function(reach_id, sos_file, success_list) {
   
   # index
   sos = open.nc(file_name)
-
   r_grp = grp.inq.nc(sos, "reaches")$self
   reach_ids = var.get.nc(r_grp, "reach_id")
   index = which(reach_ids==reach_id, arr.ind=TRUE)
 
+# example output data frame
 #     return(data.frame(date = nt,
 #                     geobam_q = gb_q,
 #                     hivdi_q = hv_q,
@@ -270,14 +269,10 @@ get_flpe_prev <- function(reach_id, sos_file, success_list) {
 # }
 
   data_list = list()
-  
-  # time
-  # item %in% x
-  print('previous')
-  print('time')
   nt = var.get.nc(r_grp, "time")[index][[1]]
   data_list$date = nt
   
+  # only run on the algo if it is in the success list
   # geobam
   if ('geobam'%in%success_list){
     print('geobam')

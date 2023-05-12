@@ -7,9 +7,6 @@ write_data_flpe <- function(diag_data_flpe, reach_id, output_dir) {
   nc_file <- paste(output_dir, paste0(reach_id, "_flpe_diag.nc"), sep=.Platform$file.sep)
   nc_out <- create.nc(nc_file, format="netcdf4")
   
-
-  # var.put.nc(nc_out, "algo_names", names(diag_data_flpe$realism_flags))
-  
   # Global attribute
   att.put.nc(nc_out, "NC_GLOBAL", "reach_id", "NC_INT64", reach_id)
   
