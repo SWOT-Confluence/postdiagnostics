@@ -33,9 +33,51 @@ flpe_diagnostics <- function(current_discharge, previous_discharge, tolerance) {
   #in all these checks, I want to be lazy and compare by column position, but that 
   #isn't a good idea in case they move. Therefore, I need to search on name, which
   #expands the code substantially unless I get overly fancy. I therefore decide to 
-  #go needlessly fancy with an explicit name check and a lapply statment
+  #go needlessly fancy with an explicit name check and a lapply statment. 
+  #This now needs to be dynamic. I will parse the current discharge headers to decide what algos to run on.
   
-  algo_names=c("geobam", "hivdi", "momma", "metroman", "sad", "sic4dvar5", "sic4dvar31")
+  # possible_algo_names=c("geobam", "hivdi", "momma", "metroman", "sad", "sic4dvar5", "sic4dvar31")
+
+# example current discharge df
+    # return(data.frame(date = nt,
+  #                   geobam_q = geobam_q,
+  #                   hivdi_q = hivdi_q,
+  #                   momma_q = momma_q,
+  #                   sad_q = sad_q,
+  #                   sad_u = sad_u,
+  #                   sic4dvar5_q = sv_q5,
+  #                   sic4dvar31_q = sv_q31,
+  #                   metroman_q = metroman_q,
+  #                   metroman_u = metroman_u
+  # ))
+  headers = colnames(current_discharge)
+  print('headers')
+  print(headers)
+
+  algo_names = list()
+
+  if ('sic4dvar5_q'%in%headers){
+    algo_names = append(algo_names, list("sic4dvar5", "sic4dvar31"))
+  }
+  if ('sad_q'%in%headers){
+    algo_names = append(algo_names, 'sad')
+  }
+  if ('metroman_q'%in%headers){
+    algo_names = append(algo_names, 'metroman')
+  }
+  if ('momma_q'%in%headers){
+    print('found momma')
+    algo_names = append(algo_names, 'momma')
+  }
+  if ('hivdi_q'%in%headers){
+    algo_names = append(algo_names, 'hivdi')
+  }
+  if ('geobam_q'%in%headers){
+    algo_names = append(algo_names, 'geobam')
+  }
+  
+  print('realism check algo names')
+  print(algo_names)
   
   #run the checks
   realism_flags=sapply(algo_names, flpe_realism_check, current_discharge=current_discharge, simplify=T)
@@ -43,7 +85,14 @@ flpe_diagnostics <- function(current_discharge, previous_discharge, tolerance) {
   #                         previous_discharge=data+100,tolerance=difference_tolerance)
   stability_flags= sapply(algo_names, flpe_stability_check, current_discharge=current_discharge, 
                           previous_discharge=previous_discharge, tolerance=tolerance)
-  
+  names(stability_flags) = algo_names
+  names(realism_flags) = algo_names
+  print('realizm flags, one of the below should have names')
+
+  print(realism_flags)
+  print(names(realism_flags))
+  print('stability flags')
+  print((stability_flags))
   return(list(realism_flags=realism_flags, stability_flags=stability_flags))
 }
 
@@ -51,7 +100,7 @@ flpe_diagnostics <- function(current_discharge, previous_discharge, tolerance) {
 flpe_realism_check <- function(current_discharge, algo_name){
   realism_flag=0
   this_algo_q= select(current_discharge,paste0(algo_name,'_q'))
-  if (paste0(algo_name,'_u') %in% names(data)){ #does explicit uncertainty exist?
+  if (paste0(algo_name,'_u') %in% names(current_discharge)){ #does explicit uncertainty exist?
     this_algo_u= select(current_discharge,paste0(algo_name,'_u'))} else{
       
       this_algo_u=0
@@ -62,21 +111,42 @@ flpe_realism_check <- function(current_discharge, algo_name){
   ){
     realism_flag=1
   }  
-  
+  print(realism_flag)
   return(realism_flag)
 }# end realism check 
 
 #stability check
 flpe_stability_check <- function(current_discharge, previous_discharge, algo_name, tolerance){
   #pass a tolerance in percent change to determine how much change is too much
-  this_algo_q_now = select(current_discharge,paste0(algo_name,'_q')) %>%
+
+  this_algo_q_now = select(current_discharge,paste0(algo_name,'_q')) 
+  print(this_algo_q_now)
+  
+  this_algo_q_now = this_algo_q_now%>%
     dplyr::filter(current_discharge$date %in% previous_discharge$date)
-  this_algo_q_then = select(previous_discharge,paste0(algo_name,'_q'))
+
+
+# previous q had NA values instead of fill so we need to filter both
+  this_algo_q_then = select(previous_discharge,paste0(algo_name,'_q'))%>%
+    dplyr::filter(previous_discharge$date %in% current_discharge$date)
   
   stability_flag=0
-  if (any(  abs(((this_algo_q_now- this_algo_q_then)/this_algo_q_now)*100) > tolerance,
+  print('then')
+  print(this_algo_q_then)
+  print('now')
+  print(this_algo_q_now)
+
+
+  test1 = this_algo_q_now- this_algo_q_then
+  test2 = test1/this_algo_q_now
+
+  if (any(  abs(test2*100) > tolerance,
             na.rm=T  )  ){
     stability_flag=1}
+
+  # if (any(  abs(((this_algo_q_now- this_algo_q_then)/this_algo_q_now)*100) > tolerance,
+  #           na.rm=T  )  ){
+  #   stability_flag=1}
   
   return(stability_flag)
 }
