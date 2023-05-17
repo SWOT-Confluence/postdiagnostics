@@ -3,7 +3,7 @@ VERS_LENGTH = 4    # length of SoS version identifier
 CONT_LOOKUP = list("af", "eu", "as", "as", "oc", "sa", "na", "na", "na")    # Numeric continent identifier
 S3_BUCKET = "confluence-sos"   # S3 SoS Bucket identifier
 S3_TEMP = "/app/postdiagnostics"    # Path to store temporary SOS file
-RESULT_SUFFIX = "_sword_v11_SOS_results.nc"    # Result file suffix
+RESULT_SUFFIX = "_sword_v15_SOS_results.nc"    # Result file suffix, updated to sword 15
 FLOAT_FILL = -999999999999    # NetCDF fill value for float variables
 VENV_PATH = "/app/env"    # Path to Python interpreter
 PYTHON_FILE = "/app/postdiagnostics/get_result_data.py"
@@ -37,11 +37,14 @@ get_input_data <- function(reaches_json, input_dir, index) {
 #' @return named list of current Q dataframe and previous Q dataframe
 get_data_flpe <- function(sos_file, reach_id, input_dir, flpe_dir) {
   
-  curr_df <- get_flpe_current(reach_id, input_dir, flpe_dir)
-  prev_df <- get_flpe_prev(reach_id, sos_file)
+  outlist <- get_flpe_current(reach_id, input_dir, flpe_dir)
+  curr_df = outlist$df
+  success_list = outlist$success_list
+  prev_df <- get_flpe_prev(reach_id, sos_file, success_list)
   sos_df <- get_sos_q(sos_file, reach_id)
-  
-  return(list(curr=cbind(curr_df, sos_df), prev=cbind(prev_df, sos_df)))
+  curr=cbind(curr_df, sos_df)
+  prev=cbind(prev_df, sos_df)
+  return(list(curr= curr, prev = prev))
 }
 
 #' Get FLPE discharge output from current run
@@ -51,73 +54,163 @@ get_data_flpe <- function(sos_file, reach_id, input_dir, flpe_dir) {
 #' @param flpe_dir string path to directory that contains reach-level flpe data
 #'
 #' @return dataframe of current FLPE discharge data
+
 get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
-  
+
+  # example output dataframe
+  # return(data.frame(date = nt,
+  #                   geobam_q = geobam_q,
+  #                   hivdi_q = hivdi_q,
+  #                   momma_q = momma_q,
+  #                   sad_q = sad_q,
+  #                   sad_u = sad_u,
+  #                   sic4dvar5_q = sv_q5,
+  #                   sic4dvar31_q = sv_q31,
+  #                   metroman_q = metroman_q,
+  #                   metroman_u = metroman_u
+  # ))
+
+  # will keep track of what algos were ran in previous modules
+  # this list will be passed between functions so we know what algos to run on
+  success_list = list()
+
+  # Data list in all functions will be a dynamic named list 
+  # to build a dataframe out of
+  data_list = list()
+
+  # changed file reserved keyword to filepath throughout
+  # 
   # time
-  file <- paste0(reach_id, "_SWOT.nc")
-  swot <- open.nc(file.path(input_dir, "swot", file, fsep=.Platform$file.sep))
-  r_grp = grp.inq.nc(swot, "reach")$self
-  nt = var.get.nc(r_grp, "time")
-  close.nc(swot)
-  
+  filename <- paste0(reach_id, "_SWOT.nc")
+  filepath <- file.path(input_dir, "swot", filename, fsep=.Platform$file.sep)
+
+  # ensures that we can find the file to run on
+  if (file.exists(filepath)){
+    swot <- open.nc(filepath)
+    r_grp = grp.inq.nc(swot, "reach")$self
+    nt = var.get.nc(r_grp, "time")
+    close.nc(swot)
+    # data_list$date = nt
+    data_list$date = nt
+
+  } else{
+    stop("Could not find input file, be sure the reaches.json is pointing to processed data.")
+  }
+
+  # we check and see if there is an output file for each algo
+  # if there is then we read the data into the named list
+  # and we add the algo to the successful list
+  # so that we know to run the rest of the script on it
+
   # geobam
-  file <- paste0(reach_id, "_geobam.nc")
-  geobam <- open.nc(file.path(flpe_dir, "geobam", file, fsep=.Platform$file.sep))
-  geobam_q <- get_gb_q_cur(geobam, "q")
-  close.nc(geobam)
+  filename <- paste0(reach_id, "_geobam.nc")
+  filepath <- file.path(flpe_dir, "geobam", filename, fsep=.Platform$file.sep)
+  print(filepath)
+
+  if (file.exists(filepath)){
+    geobam <- open.nc(filepath)
+    geobam_q <- get_gb_q_cur(geobam, "q")
+    close.nc(geobam)
+    data_list$geobam_q = geobam_q
+    success_list = append(success_list, 'geobam')
+  } else{
+    print('Could not find')
+  }
   
   # hivdi
-  file <- paste0(reach_id, "_hivdi.nc")
-  hivdi <- open.nc(file.path(flpe_dir, "hivdi", file, fsep=.Platform$file.sep))
-  hv_grp <- grp.inq.nc(hivdi, "reach")$self
-  hivdi_q <- var.get.nc(hv_grp, "Q")
-  close.nc(hivdi)
+  filename <- paste0(reach_id, "_hivdi.nc")
+  filepath <- file.path(flpe_dir, "hivdi", filename, fsep=.Platform$file.sep)
+  print(filepath)
+
+  if (file.exists(filepath)){
+    hivdi <- open.nc(filepath)
+    hv_grp <- grp.inq.nc(hivdi, "reach")$self
+    hivdi_q <- var.get.nc(hv_grp, "Q")
+    close.nc(hivdi)
+    data_list$hivdi_q = hivdi_q
+    success_list = c(success_list, 'hivdi')
+  } else{
+    print('Could not find')
+  }
+
   
   # momma
-  file <- paste0(reach_id, "_momma.nc")
-  momma <- open.nc(file.path(flpe_dir, "momma", file, fsep=.Platform$file.sep))
-  momma_q <- var.get.nc(momma, "Q")
-  close.nc(momma)
+  filename <- paste0(reach_id, "_momma.nc")
+  filepath <- file.path(flpe_dir, "momma", filename, fsep=.Platform$file.sep)
+  print(filepath)
+
+  if (file.exists(filepath)){
+    momma <- open.nc(filepath)
+    momma_q <- var.get.nc(momma, "Q")
+    close.nc(momma)
+    data_list$momma_q = momma_q
+    success_list = append(success_list, 'momma')
+  } else{
+    print('Could not find')
+  }
+
   
   # sad 
-  file <- paste0(reach_id, "_sad.nc")
-  sad <- open.nc(file.path(flpe_dir, "sad", file, fsep=.Platform$file.sep))
-  sad_q <- var.get.nc(sad, "Qa")
-  sad_u <- var.get.nc(sad, "Q_u")
-  close.nc(sad)
-  
+  filename <- paste0(reach_id, "_sad.nc")
+  filepath <- file.path(flpe_dir, "sad", filename, fsep=.Platform$file.sep)
+  print(filepath)
+
+  if (file.exists(filepath)){
+    sad <- open.nc(filepath)
+    sad_q <- var.get.nc(sad, "Qa")
+    sad_u <- var.get.nc(sad, "Q_u")
+    close.nc(sad)
+    data_list$sad_q = sad_q
+    data_list$sad_u = sad_u
+    success_list = append(success_list, 'sad')
+  } else{
+    print('Could not find')
+  }
+
   # sic4dvar
-  file <- paste0(reach_id, "_sic4dvar.nc")
-  sv <- open.nc(file.path(flpe_dir, "sic4dvar", file, fsep=.Platform$file.sep))
-  sv_q5 <- var.get.nc(sv, "Qalgo5")
-  sv_q31 <- var.get.nc(sv, "Qalgo31")
-  close.nc(sv)
+  filename <- paste0(reach_id, "_sic4dvar.nc")
+  filepath <- file.path(flpe_dir, "sic4dvar", filename, fsep=.Platform$file.sep)
+  print(filepath)
+
+  if (file.exists(filepath)){
+    sv <- open.nc(filepath)
+    sv_q5 <- var.get.nc(sv, "Qalgo5")
+    sv_q31 <- var.get.nc(sv, "Qalgo31")
+    close.nc(sv)
+    data_list$sv_q5 = sv5_q
+    data_list$sv_q31 = sv_q31
+    success_list = append(success_list, 'sic4dvar')
+  } else{
+    print('Could not find')
+  }
+
   
   # metroman
-  file <- list.files(path=file.path(flpe_dir, "metroman", fsep=.Platform$file.sep), 
+  filename <- list.files(path=file.path(flpe_dir, "metroman", fsep=.Platform$file.sep), 
                      pattern=paste0(".*", reach_id, ".*", "_metroman\\.nc"), 
                      recursive=TRUE, 
                      full.names=TRUE)
-  metroman <- open.nc(file)
-  reach_ids <- var.get.nc(metroman, "reach_id")
-  index <- which(reach_ids==reach_id, arr.ind=TRUE)
-  metroman_q <- var.get.nc(metroman, "allq")[,index]
-  metroman_q[is.nan(metroman_q)] = NA
-  metroman_u <- var.get.nc(metroman, "q_u")[,index]
-  metroman_u[is.nan(metroman_u)] = NA
-  close.nc(metroman)
-  
-  return(data.frame(date = nt,
-                    geobam_q = geobam_q,
-                    hivdi_q = hivdi_q,
-                    momma_q = momma_q,
-                    sad_q = sad_q,
-                    sad_u = sad_u,
-                    sic4dvar5_q = sv_q5,
-                    sic4dvar31_q = sv_q31,
-                    metroman_q = metroman_q,
-                    metroman_u = metroman_u
-  ))
+  #list.files returns a path so we do not need to convert, but if it could not find the file it is nan
+  filepath <- filename
+
+  if (length(filepath)>0){
+    metroman <- open.nc(filename)
+    reach_ids <- var.get.nc(metroman, "reach_id")
+    index <- which(reach_ids==reach_id, arr.ind=TRUE)
+    metroman_q <- var.get.nc(metroman, "allq")[,index]
+    metroman_q[is.nan(metroman_q)] = NA
+    metroman_u <- var.get.nc(metroman, "q_u")[,index]
+    metroman_u[is.nan(metroman_u)] = NA
+    close.nc(metroman)
+    data_list$metroman_q = metroman_q
+    data_list$metroman_u = metroman_u
+    success_list = append(success_list, 'metroman')
+  } else{
+    print('Could not find')
+  }
+  df = data.frame(data_list)
+  outlist <- list("df" = df, "success_list" = success_list)
+  return(outlist)
 }
 
 #' Get geoBAM discharge posteriors for current run
@@ -140,9 +233,10 @@ get_gb_q_cur <- function(ds, name) {
 #'
 #' @param reach_id integer reach identifier
 #' @param sos_file str path to sos file
+#' @param success_list a list of algo names to run on
 #'
 #' @return dataframe of previous FLPE discharge data
-get_flpe_prev <- function(reach_id, sos_file) {
+get_flpe_prev <- function(reach_id, sos_file, success_list) {
   
   # Result file
   key = get_result_file_name(reach_id, sos_file)
@@ -159,59 +253,105 @@ get_flpe_prev <- function(reach_id, sos_file) {
   r_grp = grp.inq.nc(sos, "reaches")$self
   reach_ids = var.get.nc(r_grp, "reach_id")
   index = which(reach_ids==reach_id, arr.ind=TRUE)
-  
-  # time
+
+# example output data frame
+#     return(data.frame(date = nt,
+#                     geobam_q = gb_q,
+#                     hivdi_q = hv_q,
+#                     momma_q = mo_q,
+#                     sad_q = sd_q,
+#                     sad_u = sd_u,
+#                     sic4dvar5_q = sv5_q,
+#                     sic4dvar31_q = sv31_q,
+#                     metroman_q = mm_q,
+#                     metroman_u = mm_u
+#   ))
+# }
+
+  data_list = list()
   nt = var.get.nc(r_grp, "time")[index][[1]]
+  data_list$date = nt
   
+  # only run on the algo if it is in the success list
   # geobam
-  gb_grp <- grp.inq.nc(sos, "neobam")$self
-  gb_q <- get_gb_q_prev(gb_grp, "q", index)
+  if ('geobam'%in%success_list){
+    print('geobam')
+    gb_grp <- grp.inq.nc(sos, "neobam")$self
+    gb_q <- get_gb_q_prev(gb_grp, "q", index)
+    data_list$geobam_q = gb_q
+
+  }else{
+    print('geobam not found')
+  }
   
   # hivdi
-  hv_grp <- grp.inq.nc(sos, "hivdi")$self
-  hv_q <- var.get.nc(hv_grp, "Q")[index][[1]]
-  hv_q[hv_q == FLOAT_FILL] = NA
+  if ('hivdi'%in%success_list){
+    print('hivdi')
+    hv_grp <- grp.inq.nc(sos, "hivdi")$self
+    hv_q <- var.get.nc(hv_grp, "Q")[index][[1]]
+    hv_q[hv_q == FLOAT_FILL] = NA
+    data_list$hivdi_q = hv_q
+  }else{
+    print('hivdi not found')
+  }
   
   # mommma
-  mo_grp <- grp.inq.nc(sos, "momma")$self
-  mo_q <- var.get.nc(mo_grp, "Q")[index][[1]]
-  mo_q[mo_q == FLOAT_FILL] = NA
-  
+  if ('momma'%in%success_list){
+    print('momma')
+    mo_grp <- grp.inq.nc(sos, "momma")$self
+    mo_q <- var.get.nc(mo_grp, "Q")[index][[1]]
+    mo_q[mo_q == FLOAT_FILL] = NA
+    data_list$momma_q = mo_q
+  }else{
+    print('Not found...')
+  }
   # sad
-  sd_grp <- grp.inq.nc(sos, "sad")$self
-  sd_q <- var.get.nc(sd_grp, "Qa")[index][[1]]
-  sd_q[sd_q == FLOAT_FILL] = NA
-  sd_u <- var.get.nc(sd_grp, "Q_u")[index][[1]]
-  sd_u[sd_u == FLOAT_FILL] = NA
+  if ('sad'%in%success_list){
+    print('sad')
+    sd_grp <- grp.inq.nc(sos, "sad")$self
+    sd_q <- var.get.nc(sd_grp, "Qa")[index][[1]]
+    sd_q[sd_q == FLOAT_FILL] = NA
+    sd_u <- var.get.nc(sd_grp, "Q_u")[index][[1]]
+    sd_u[sd_u == FLOAT_FILL] = NA
+    data_list$sad_q = sd_q
+  }else{
+    print('Not found')
+  }
   
   # sic4dvar
-  sv_grp <- grp.inq.nc(sos, "sic4dvar")$self
-  sv5_q <- var.get.nc(sv_grp, "Qalgo5")[index][[1]]
-  sv5_q[sv5_q == FLOAT_FILL] = NA
-  sv31_q <- var.get.nc(sv_grp, "Qalgo31")[index][[1]]
-  sv31_q[sv31_q == FLOAT_FILL] = NA
+  if ('sic4dvar'%in%success_list){
+    print('sic')
+    sv_grp <- grp.inq.nc(sos, "sic4dvar")$self
+    sv5_q <- var.get.nc(sv_grp, "Qalgo5")[index][[1]]
+    sv5_q[sv5_q == FLOAT_FILL] = NA
+    sv31_q <- var.get.nc(sv_grp, "Qalgo31")[index][[1]]
+    sv31_q[sv31_q == FLOAT_FILL] = NA
+    data_list$sic4dvar5_q = sv5_q
+    data_list$sic4dvar31_q = sv31_q
+  }else{
+    print('Not found')
+  }
   
   # metroman
-  mm_grp <- grp.inq.nc(sos, "metroman")$self
-  mm_q <- var.get.nc(mm_grp, "allq")[index][[1]]
-  mm_q[mm_q == FLOAT_FILL] = NA
-  mm_u <- var.get.nc(mm_grp, "q_u")[index][[1]]
-  mm_u[mm_u == FLOAT_FILL] = NA
+  if ('metroman'%in%success_list){
+    print('metro')
+    mm_grp <- grp.inq.nc(sos, "metroman")$self
+    mm_q <- var.get.nc(mm_grp, "allq")[index][[1]]
+    mm_q[mm_q == FLOAT_FILL] = NA
+    mm_u <- var.get.nc(mm_grp, "q_u")[index][[1]]
+    mm_u[mm_u == FLOAT_FILL] = NA
+    data_list$metroman_q = mm_q
+    data_list$metroman_u = mm_u
+  }else{
+    print('Not found')
+  }
   
   close.nc(sos)
   file.remove(file_name)
-  return(data.frame(date = nt,
-                    geobam_q = gb_q,
-                    hivdi_q = hv_q,
-                    momma_q = mo_q,
-                    sad_q = sd_q,
-                    sad_u = sd_u,
-                    sic4dvar5_q = sv5_q,
-                    sic4dvar31_q = sv31_q,
-                    metroman_q = mm_q,
-                    metroman_u = mm_u
-  ))
+  df = data.frame(data_list)
+  return(df)
 }
+
 
 #' Return previous version SOS result file name
 #'
