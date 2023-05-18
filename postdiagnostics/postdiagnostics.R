@@ -151,15 +151,21 @@ flpe_stability_check <- function(current_discharge, previous_discharge, algo_nam
 run_moi_diagnostics <- function(input_dir, flpe_dir, moi_dir, output_dir, index, tolerance) {
   # INPUT  
   reach_files <- get_input_data(reaches_json, input_dir, index)
-  flpe_data <- get_flpe_current(reach_files$reach_id, input_dir, flpe_dir)
+  outlist <- get_flpe_current(reach_files$reach_id, input_dir, flpe_dir)
+  flpe_data = outlist$df
+  success_list = outlist$success_list
   moi_data <- get_data_moi(reach_files$sos, reach_files$reach_id, input_dir, moi_dir)
   
   # FORMAT FLPE DATA FOR DIAGS - currently selects algo31 for diagnostics
-  flpe_data <- subset(flpe_data, select=-c(sic4dvar5_q))
-  flpe_data <- flpe_data %>% rename(sic4dvar_q = sic4dvar31_q)
+  headers = colnames(flpe_data)
+
+  if ('sic4dvar5_q'%in%headers){
+    flpe_data <- subset(flpe_data, select=-c(sic4dvar5_q))
+    flpe_data <- flpe_data %>% rename(sic4dvar_q = sic4dvar31_q)
+  }
   
   # PROCESSING
-  diag_data_moi <- moi_diagnostics(flpe_data, moi_data$curr, moi_data$prev, tolerance)
+  diag_data_moi <- moi_diagnostics(flpe_data, moi_data$curr, moi_data$prev, tolerance, success_list)
   
   # OUTPUT
   write_data_moi(diag_data_moi, reach_files$reach_id, output_dir)
@@ -173,7 +179,7 @@ run_moi_diagnostics <- function(input_dir, flpe_dir, moi_dir, output_dir, index,
 #' @param tolerance ??
 #' 
 #' @return list of flags for reach-level flpe algorithms
-moi_diagnostics <- function(flpe_discharge, current_integrator, previous_integrator, tolerance) {
+moi_diagnostics <- function(flpe_discharge, current_integrator, previous_integrator, tolerance, algo_names) {
   # Helpful info: 
   # current_integrator and previous_integrator columns name meanings:
   # "algoname_q" means integrated discharge
@@ -181,7 +187,9 @@ moi_diagnostics <- function(flpe_discharge, current_integrator, previous_integra
   # "algoname_qmean_a" means discharge after integration
   # "sos_qmin" and "sos_qmax" are SoS priors
   
-  algo_names=c("geobam", "hivdi", "momma", "metroman", "sad", "sic4dvar")
+  # algo_names=c("geobam", "hivdi", "momma", "metroman", "sad", "sic4dvar")
+
+
   
   realism_flags=sapply(algo_names, moi_realism_check, current_integrator=current_integrator, simplify=T)
   
@@ -190,7 +198,8 @@ moi_diagnostics <- function(flpe_discharge, current_integrator, previous_integra
   
   prepost_flags= sapply(algo_names, moi_prepost_check, current_integrator=current_integrator, 
                         flpe_discharge=flpe_discharge, tolerance=tolerance)
-  
+  names(stability_flags) = algo_names
+  names(realism_flags) = algo_names
   return(list(realism_flags=realism_flags, stability_flags=stability_flags, prepost_flags=prepost_flags))
 }
 
@@ -221,10 +230,23 @@ moi_stability_check <- function(current_integrator, previous_integrator, algo_na
     dplyr::filter(date %in% previous_integrator$date)%>%
     select(-date)
   
-  this_algo_q_then = select(previous_integrator,paste0(algo_name,'_q'))
+  # this_algo_q_then = select(previous_integrator,paste0(algo_name,'_q'))
+
+  # # previous q had NA values instead of fill so we need to filter both
+  this_algo_q_then = select(previous_integrator,paste0(algo_name,'_q'), date)%>%
+    dplyr::filter(previous_integrator$date %in% current_integrator$date)%>%
+    select(-date)
   
   stability_flag=0
-  if (any(  abs(((this_algo_q_now- this_algo_q_then)/this_algo_q_now)*100) > tolerance,
+  # if (any(  abs(((this_algo_q_now- this_algo_q_then)/this_algo_q_now)*100) > tolerance,
+  #           na.rm=T  )  ){
+  #   stability_flag=1}
+  
+  # return(stability_flag)
+  test1 = this_algo_q_now- this_algo_q_then
+  test2 = test1/this_algo_q_now
+
+  if (any(  abs(test2*100) > tolerance,
             na.rm=T  )  ){
     stability_flag=1}
   
