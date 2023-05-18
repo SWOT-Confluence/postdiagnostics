@@ -5,6 +5,8 @@
 #' @param output_dir path to output directory
 write_data_flpe <- function(diag_data_flpe, reach_id, output_dir) {
   nc_file <- paste(output_dir, paste0(reach_id, "_flpe_diag.nc"), sep=.Platform$file.sep)
+  print('writing file too...')
+  print(nc_file)
   nc_out <- create.nc(nc_file, format="netcdf4")
   
   # Global attribute
@@ -39,6 +41,8 @@ write_data_flpe <- function(diag_data_flpe, reach_id, output_dir) {
 #' @param output_dir path to output directory
 write_data_moi <- function(diag_data_moi, reach_id, output_dir) {
   nc_file <- paste(output_dir, paste0(reach_id, "_moi_diag.nc"), sep=.Platform$file.sep)
+  print('writing file too...')
+  print(nc_file)
   nc_out <- create.nc(nc_file, format="netcdf4")
   
   # Global attribute
