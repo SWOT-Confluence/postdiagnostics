@@ -114,7 +114,7 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
     data_list$geobam_q = geobam_q
     success_list = append(success_list, 'geobam')
   } else{
-    print('Could not find')
+    print('Could not find geobam')
   }
   
   # hivdi
@@ -146,7 +146,7 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
     data_list$momma_q = momma_q
     success_list = append(success_list, 'momma')
   } else{
-    print('Could not find')
+    print('Could not find momma')
   }
 
   
@@ -164,7 +164,7 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
     data_list$sad_u = sad_u
     success_list = append(success_list, 'sad')
   } else{
-    print('Could not find')
+    print('Could not find sad')
   }
 
   # sic4dvar
@@ -177,11 +177,11 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
     sv_q5 <- var.get.nc(sv, "Qalgo5")
     sv_q31 <- var.get.nc(sv, "Qalgo31")
     close.nc(sv)
-    data_list$sv_q5 = sv5_q
-    data_list$sv_q31 = sv_q31
+    data_list$sic4dvar5_q = sv_q5
+    data_list$sic4dvar31_q = sv_q31
     success_list = append(success_list, 'sic4dvar')
   } else{
-    print('Could not find')
+    print('Could not find sic')
   }
 
   
@@ -197,16 +197,23 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
     metroman <- open.nc(filename)
     reach_ids <- var.get.nc(metroman, "reach_id")
     index <- which(reach_ids==reach_id, arr.ind=TRUE)
-    metroman_q <- var.get.nc(metroman, "allq")[,index]
-    metroman_q[is.nan(metroman_q)] = NA
-    metroman_u <- var.get.nc(metroman, "q_u")[,index]
-    metroman_u[is.nan(metroman_u)] = NA
+    if (length(reach_ids)==1){
+        metroman_q <- var.get.nc(metroman, "allq")[1]
+        metroman_q[is.nan(metroman_q)] = NA
+        metroman_u <- var.get.nc(metroman, "q_u")[1]
+        metroman_u[is.nan(metroman_u)] = NA
+    }else{
+        metroman_q <- var.get.nc(metroman, "allq")[,index]
+        metroman_q[is.nan(metroman_q)] = NA
+        metroman_u <- var.get.nc(metroman, "q_u")[,index]
+        metroman_u[is.nan(metroman_u)] = NA
+    }
     close.nc(metroman)
     data_list$metroman_q = metroman_q
     data_list$metroman_u = metroman_u
     success_list = append(success_list, 'metroman')
   } else{
-    print('Could not find')
+    print('Could not find metro')
   }
   df = data.frame(data_list)
   outlist <- list("df" = df, "success_list" = success_list)
@@ -303,7 +310,7 @@ get_flpe_prev <- function(reach_id, sos_file, success_list) {
     mo_q[mo_q == FLOAT_FILL] = NA
     data_list$momma_q = mo_q
   }else{
-    print('Not found...')
+    print('Momma not found')
   }
   # sad
   if ('sad'%in%success_list){
@@ -315,21 +322,21 @@ get_flpe_prev <- function(reach_id, sos_file, success_list) {
     sd_u[sd_u == FLOAT_FILL] = NA
     data_list$sad_q = sd_q
   }else{
-    print('Not found')
+    print('Sad not found')
   }
   
   # sic4dvar
   if ('sic4dvar'%in%success_list){
     print('sic')
     sv_grp <- grp.inq.nc(sos, "sic4dvar")$self
-    sv5_q <- var.get.nc(sv_grp, "Qalgo5")[index][[1]]
-    sv5_q[sv5_q == FLOAT_FILL] = NA
-    sv31_q <- var.get.nc(sv_grp, "Qalgo31")[index][[1]]
-    sv31_q[sv31_q == FLOAT_FILL] = NA
-    data_list$sic4dvar5_q = sv5_q
-    data_list$sic4dvar31_q = sv31_q
+    sv_q5 <- var.get.nc(sv_grp, "Qalgo5")[index][[1]]
+    sv_q5[sv_q5 == FLOAT_FILL] = NA
+    sv_q31 <- var.get.nc(sv_grp, "Qalgo31")[index][[1]]
+    sv_q31[sv_q31 == FLOAT_FILL] = NA
+    data_list$sic4dvar5_q = sv_q5
+    data_list$sic4dvar31_q = sv_q31
   }else{
-    print('Not found')
+    print('Sic not found')
   }
   
   # metroman
@@ -343,7 +350,7 @@ get_flpe_prev <- function(reach_id, sos_file, success_list) {
     data_list$metroman_q = mm_q
     data_list$metroman_u = mm_u
   }else{
-    print('Not found')
+    print('metro not found')
   }
   
   close.nc(sos)
@@ -527,6 +534,7 @@ get_moi_prev <- function(reach_id, sos_file) {
   
   # result file
   key = get_result_file_name(reach_id, sos_file)
+  print(key)
 
   # S3 access to result file
   file_name = paste(S3_TEMP, tail(strsplit(key, "/")[[1]], n=1), sep="/")

@@ -27,7 +27,6 @@ if (length(args) == 2) {
   reaches_json <- "reaches.json"
   tolerance <- 0.25
 }
-
 # Run diagnostics
 index <- strtoi(Sys.getenv("AWS_BATCH_JOB_ARRAY_INDEX")) + 1
 run_flpe_diagnostics(input_dir, flpe_dir, output_dir, reaches_json, index, tolerance)
