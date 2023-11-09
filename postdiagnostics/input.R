@@ -36,13 +36,16 @@ get_input_data <- function(reaches_json, input_dir, index) {
 #'
 #' @return named list of current Q dataframe and previous Q dataframe
 get_data_flpe <- function(sos_file, reach_id, input_dir, flpe_dir) {
-  
+  print('getting current')
   outlist <- get_flpe_current(reach_id, input_dir, flpe_dir)
   curr_df = outlist$df
   success_list = outlist$success_list
+  print('getting previous')
   prev_df <- get_flpe_prev(reach_id, sos_file, success_list)
   sos_df <- get_sos_q(sos_file, reach_id)
+  print('combining current and sos')
   curr=cbind(curr_df, sos_df)
+  print('combining previous and sos')
   prev=cbind(prev_df, sos_df)
   return(list(curr= curr, prev = prev))
 }
@@ -155,17 +158,17 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
   filepath <- file.path(flpe_dir, "sad", filename, fsep=.Platform$file.sep)
   print(filepath)
 
-  if (file.exists(filepath)){
-    sad <- open.nc(filepath)
-    sad_q <- var.get.nc(sad, "Qa")
-    sad_u <- var.get.nc(sad, "Q_u")
-    close.nc(sad)
-    data_list$sad_q = sad_q
-    data_list$sad_u = sad_u
-    success_list = append(success_list, 'sad')
-  } else{
-    print('Could not find sad')
-  }
+  # if (file.exists(filepath)){
+  #   sad <- open.nc(filepath)
+  #   sad_q <- var.get.nc(sad, "Qa")
+  #   sad_u <- var.get.nc(sad, "Q_u")
+  #   close.nc(sad)
+  #   data_list$sad_q = sad_q
+  #   data_list$sad_u = sad_u
+  #   success_list = append(success_list, 'sad')
+  # } else{
+  #   print('Could not find sad')
+  # }
 
   # sic4dvar
   filename <- paste0(reach_id, "_sic4dvar.nc")
@@ -174,11 +177,11 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
 
   if (file.exists(filepath)){
     sv <- open.nc(filepath)
-    sv_q5 <- var.get.nc(sv, "Qalgo5")
-    sv_q31 <- var.get.nc(sv, "Qalgo31")
+    # sv_q5 <- var.get.nc(sv, "Qalgo5")
+    sv_qmm <- var.get.nc(sv, "Q_mm")
     close.nc(sv)
-    data_list$sic4dvar5_q = sv_q5
-    data_list$sic4dvar31_q = sv_q31
+    # data_list$sic4dvar5_q = sv_q5
+    data_list$sic4dvarmm_q = sv_qmm
     success_list = append(success_list, 'sic4dvar')
   } else{
     print('Could not find sic')
@@ -215,7 +218,15 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
   } else{
     print('Could not find metro')
   }
+  print('making dataframe')
+  print(names(data_list))
+  for (x in data_list){
+    print(x)
+    print(length(x))
+  }
   df = data.frame(data_list)
+
+  print('dataframe to list')
   outlist <- list("df" = df, "success_list" = success_list)
   return(outlist)
 }
@@ -329,12 +340,12 @@ get_flpe_prev <- function(reach_id, sos_file, success_list) {
   if ('sic4dvar'%in%success_list){
     print('sic')
     sv_grp <- grp.inq.nc(sos, "sic4dvar")$self
-    sv_q5 <- var.get.nc(sv_grp, "Qalgo5")[index][[1]]
-    sv_q5[sv_q5 == FLOAT_FILL] = NA
-    sv_q31 <- var.get.nc(sv_grp, "Qalgo31")[index][[1]]
-    sv_q31[sv_q31 == FLOAT_FILL] = NA
-    data_list$sic4dvar5_q = sv_q5
-    data_list$sic4dvar31_q = sv_q31
+    # sv_q5 <- var.get.nc(sv_grp, "Qalgo5")[index][[1]]
+    # sv_q5[sv_q5 == FLOAT_FILL] = NA
+    sv_qmm <- var.get.nc(sv_grp, "Q_mm")[index][[1]]
+    sv_qmm[sv_qmm == FLOAT_FILL] = NA
+    # data_list$sic4dvar5_q = sv_q5
+    data_list$sic4dvarmm_q = sv_qmm
   }else{
     print('Sic not found')
   }
@@ -370,7 +381,7 @@ get_result_file_name <- function(reach_id, sos_file) {
   # Current SoS data
   sos = open.nc(sos_file)
   run_type = att.get.nc(sos, "NC_GLOBAL", "run_type")
-  version = att.get.nc(sos, "NC_GLOBAL", "version")
+  version = att.get.nc(sos, "NC_GLOBAL", "product_version")
   close.nc(sos)
   
   # Previous result version
@@ -537,7 +548,7 @@ get_moi_prev <- function(reach_id, sos_file) {
   print(key)
 
   # S3 access to result file
-  file_name = paste(S3_TEMP, tail(strsplit(key, "/")[[1]], n=1), sep="/")
+  file_name = paste(S3_BUCKET, tail(strsplit(key, "/")[[1]], n=1), sep="/")
   # use_virtualenv(VENV_PATH)
   use_python("/usr/bin/python3")
   source_python(PYTHON_FILE)
