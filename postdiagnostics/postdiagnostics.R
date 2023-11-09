@@ -12,13 +12,17 @@
 run_flpe_diagnostics <- function(input_dir, flpe_dir, output_dir, reaches_json, 
                                  index, tolerance) {
   # INPUT
+  print('getting input files')
   reach_files <- get_input_data(reaches_json, input_dir, index)
+  print('getting flpe data')
   data <- get_data_flpe(reach_files$sos, reach_files$reach_id, input_dir, flpe_dir)
   
   # PROCESSING
+  print('processing')
   diag_data_flpe <- flpe_diagnostics(data$curr, data$prev, tolerance)
   
   # OUTPUT
+  print('outputting')
   write_data_flpe(diag_data_flpe, reach_files$reach_id, output_dir)
 }
 
@@ -57,8 +61,8 @@ flpe_diagnostics <- function(current_discharge, previous_discharge, tolerance) {
 
   # created dynamic algo names list by referencing the headers of current discharge
 
-  if ('sic4dvar5_q'%in%headers){
-    algo_names = append(algo_names, list("sic4dvar5", "sic4dvar31"))
+  if ('sic4dvarmm_q'%in%headers){
+    algo_names = append(algo_names, "sic4dvarmm")
   }
   if ('sad_q'%in%headers){
     algo_names = append(algo_names, 'sad')
@@ -159,9 +163,9 @@ run_moi_diagnostics <- function(input_dir, flpe_dir, moi_dir, output_dir, index,
   # FORMAT FLPE DATA FOR DIAGS - currently selects algo31 for diagnostics
   headers = colnames(flpe_data)
 
-  if ('sic4dvar5_q'%in%headers){
-    flpe_data <- subset(flpe_data, select=-c(sic4dvar5_q))
-    flpe_data <- flpe_data %>% rename(sic4dvar_q = sic4dvar31_q)
+  if ('sic4dvarmm_q'%in%headers){
+    # flpe_data <- subset(flpe_data, select=-c({old_algo_name}))
+    flpe_data <- flpe_data %>% rename(sic4dvar_q = sic4dvarmm_q)
   }
   
   # PROCESSING
