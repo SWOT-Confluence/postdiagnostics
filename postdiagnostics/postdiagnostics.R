@@ -163,8 +163,8 @@ run_moi_diagnostics <- function(input_dir, flpe_dir, moi_dir, output_dir, index,
   # FORMAT FLPE DATA FOR DIAGS - currently selects algo31 for diagnostics
   headers = colnames(flpe_data)
 
-  if ('sic4dvar5_q'%in%headers){
-    flpe_data <- subset(flpe_data, select=-c(sic4dvarmm_q))
+  if ('sic4dvarmm_q'%in%headers){
+    # flpe_data <- subset(flpe_data, select=-c({old_algo_name}))
     flpe_data <- flpe_data %>% rename(sic4dvar_q = sic4dvarmm_q)
   }
   

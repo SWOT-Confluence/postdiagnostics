@@ -548,7 +548,7 @@ get_moi_prev <- function(reach_id, sos_file) {
   print(key)
 
   # S3 access to result file
-  file_name = paste(S3_BUCKET, tail(strsplit(key, "/")[[1]], n=1), sep="/")
+  file_name = paste(S3_TEMP, tail(strsplit(key, "/")[[1]], n=1), sep="/")
   # use_virtualenv(VENV_PATH)
   use_python("/usr/bin/python3")
   source_python(PYTHON_FILE)
