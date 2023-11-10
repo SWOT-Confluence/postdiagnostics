@@ -158,17 +158,17 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
   filepath <- file.path(flpe_dir, "sad", filename, fsep=.Platform$file.sep)
   print(filepath)
 
-  # if (file.exists(filepath)){
-  #   sad <- open.nc(filepath)
-  #   sad_q <- var.get.nc(sad, "Qa")
-  #   sad_u <- var.get.nc(sad, "Q_u")
-  #   close.nc(sad)
-  #   data_list$sad_q = sad_q
-  #   data_list$sad_u = sad_u
-  #   success_list = append(success_list, 'sad')
-  # } else{
-  #   print('Could not find sad')
-  # }
+  if (file.exists(filepath)){
+    sad <- open.nc(filepath)
+    sad_q <- var.get.nc(sad, "Qa")
+    sad_u <- var.get.nc(sad, "Q_u")
+    close.nc(sad)
+    data_list$sad_q = sad_q
+    data_list$sad_u = sad_u
+    success_list = append(success_list, 'sad')
+  } else{
+    print('Could not find sad')
+  }
 
   # sic4dvar
   filename <- paste0(reach_id, "_sic4dvar.nc")
