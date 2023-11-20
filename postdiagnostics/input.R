@@ -182,7 +182,7 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
     sv_q_da <- var.get.nc(sv, "Q_da")
     close.nc(sv)
     # data_list$sic4dvar5_q = sv_q5
-    data_list$sic4dvar_q_mm = sv_qmm
+    data_list$sic4dvar_q_mm = sv_q_mm
     data_list$sic4dvar_q_da = sv_q_da
     success_list = append(success_list, 'sic4dvar')
   } else{
