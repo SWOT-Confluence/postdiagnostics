@@ -273,9 +273,13 @@ get_flpe_prev <- function(reach_id, sos_file, success_list, local_bool) {
   # use_virtualenv(VENV_PATH)
   use_python("/usr/bin/python3")
   source_python(PYTHON_FILE)
+
   if (!local_bool){
     download_previous_result(S3_BUCKET, key, file_name)
+  }else{
+    file_name = paste("/mnt/data/results",basename(key), sep="/") 
   }
+  print(file_name)
   
   
   # index
@@ -573,7 +577,10 @@ get_moi_prev <- function(reach_id, sos_file, local_bool) {
   source_python(PYTHON_FILE)
   if (!local_bool){
     download_previous_result(S3_BUCKET, key, file_name)
+  }else{
+    file_name = paste("/mnt/data/results",basename(key), sep = "/") 
   }
+
   
   # index
   sos = open.nc(file_name)
