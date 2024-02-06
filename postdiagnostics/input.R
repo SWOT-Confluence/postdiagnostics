@@ -386,7 +386,10 @@ get_flpe_prev <- function(reach_id, sos_file, success_list, local_bool) {
   }
   
   close.nc(sos)
-  file.remove(file_name)
+  if(!local_bool){
+      file.remove(file_name)
+  }
+
   df = data.frame(data_list)
   return(df)
 }
@@ -497,6 +500,7 @@ get_moi_current <- function(reach_id, input_dir, moi_dir) {
   
   # integrator file
   file <- paste0(reach_id, "_integrator.nc")
+  print(file.path(moi_dir, file, fsep=.Platform$file.sep))
   moi <- open.nc(file.path(moi_dir, file, fsep=.Platform$file.sep))
   
   # geobam
@@ -580,6 +584,7 @@ get_moi_prev <- function(reach_id, sos_file, local_bool) {
   }else{
     file_name = paste("/mnt/data/results",basename(key), sep = "/") 
   }
+  print(file_name)
 
   
   # index
@@ -634,7 +639,10 @@ get_moi_prev <- function(reach_id, sos_file, local_bool) {
   mm_qmean_a <- var.get.nc(mm_grp, "qbar_basinScale")[index]
   
   close.nc(sos)
-  file.remove(file_name)
+  if(!local_bool){
+    file.remove(file_name)
+  }
+  
   return(data.frame(date = nt,
                     geobam_q = gb_q,
                     gb_qmean_b = gb_qmean_b,
