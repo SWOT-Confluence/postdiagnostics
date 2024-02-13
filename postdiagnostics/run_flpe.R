@@ -18,11 +18,11 @@ output_dir <- file.path("/mnt", "data", "output", fsep=.Platform$file.sep)
 # Command line arguments
 args <- commandArgs(trailingOnly=TRUE)
 if (length(args) == 3) {
-  tolerance <- args[1]
+  tolerance <- strtoi(args[1])
   index <- args[2]
   reaches_json <- args[3]
 } else if (length(args) == 2) {
-  tolerance <- args[1]
+  tolerance <- strtoi(args[1])
   index <- args[2]
   reaches_json <- "reaches.json"
 } else {
