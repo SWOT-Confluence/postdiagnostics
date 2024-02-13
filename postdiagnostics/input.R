@@ -178,10 +178,12 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
   if (file.exists(filepath)){
     sv <- open.nc(filepath)
     # sv_q5 <- var.get.nc(sv, "Qalgo5")
-    sv_qmm <- var.get.nc(sv, "Q_mm")
+    sv_q_mm <- var.get.nc(sv, "Q_mm")
+    sv_q_da <- var.get.nc(sv, "Q_da")
     close.nc(sv)
     # data_list$sic4dvar5_q = sv_q5
-    data_list$sic4dvarmm_q = sv_qmm
+    data_list$sic4dvar_q_mm = sv_q_mm
+    data_list$sic4dvar_q_da = sv_q_da
     success_list = append(success_list, 'sic4dvar')
   } else{
     print('Could not find sic')
@@ -220,9 +222,15 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
   }
   print('making dataframe')
   print(names(data_list))
-  for (x in data_list){
+  for (x in 1:length(data_list)){
+    print('index')
     print(x)
-    print(length(x))
+    print('name')
+    print(names(data_list)[x])
+    print('values')
+    print(data_list[x])
+    print('length')
+    print(length(data_list[x]))
   }
   df = data.frame(data_list)
 
@@ -255,6 +263,7 @@ get_gb_q_cur <- function(ds, name) {
 #'
 #' @return dataframe of previous FLPE discharge data
 get_flpe_prev <- function(reach_id, sos_file, success_list) {
+  print('in get flpe prev')
   
   # Result file
   key = get_result_file_name(reach_id, sos_file)
@@ -342,10 +351,15 @@ get_flpe_prev <- function(reach_id, sos_file, success_list) {
     sv_grp <- grp.inq.nc(sos, "sic4dvar")$self
     # sv_q5 <- var.get.nc(sv_grp, "Qalgo5")[index][[1]]
     # sv_q5[sv_q5 == FLOAT_FILL] = NA
-    sv_qmm <- var.get.nc(sv_grp, "Q_mm")[index][[1]]
-    sv_qmm[sv_qmm == FLOAT_FILL] = NA
+    # data_list$sic4dvar_q_mm = sv_qmm
+    # data_list$sic4dvar_q_da = sv_q_da
+    sv_q_mm <- var.get.nc(sv_grp, "Q_mm")[index][[1]]
+    sv_q_mm[sv_q_mm == FLOAT_FILL] = NA
+    sv_q_da <- var.get.nc(sv_grp, "Q_da")[index][[1]]
+    sv_q_da[sv_q_da == FLOAT_FILL] = NA
     # data_list$sic4dvar5_q = sv_q5
-    data_list$sic4dvarmm_q = sv_qmm
+    data_list$sic4dvar_q_mm = sv_q_mm
+    data_list$sic4dvar_q_da = sv_q_da
   }else{
     print('Sic not found')
   }
@@ -369,6 +383,7 @@ get_flpe_prev <- function(reach_id, sos_file, success_list) {
   df = data.frame(data_list)
   return(df)
 }
+
 
 
 #' Return previous version SOS result file name
@@ -421,6 +436,7 @@ get_gb_q_prev <- function(ds, name, index) {
 #'
 #' @return named list of discharge priors
 get_sos_q <- function(sos_file, reach_id) {
+  print('in get sos q')
   sos <- open.nc(sos_file)
   r_grp <- grp.inq.nc(sos, "reaches")$self
   reach_ids <- var.get.nc(r_grp, "reach_id")

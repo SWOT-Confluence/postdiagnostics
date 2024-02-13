@@ -62,7 +62,8 @@ flpe_diagnostics <- function(current_discharge, previous_discharge, tolerance) {
   # created dynamic algo names list by referencing the headers of current discharge
 
   if ('sic4dvarmm_q'%in%headers){
-    algo_names = append(algo_names, "sic4dvarmm")
+    algo_names = append(algo_names, "sic4dvar_q_mm")
+    algo_names = append(algo_names, "sic4dvar_q_da")
   }
   if ('sad_q'%in%headers){
     algo_names = append(algo_names, 'sad')
@@ -163,9 +164,10 @@ run_moi_diagnostics <- function(input_dir, flpe_dir, moi_dir, output_dir, index,
   # FORMAT FLPE DATA FOR DIAGS - currently selects algo31 for diagnostics
   headers = colnames(flpe_data)
 
-  if ('sic4dvarmm_q'%in%headers){
+  if ('sic4dvar_q_mm'%in%headers){
     # flpe_data <- subset(flpe_data, select=-c({old_algo_name}))
-    flpe_data <- flpe_data %>% rename(sic4dvar_q = sic4dvarmm_q)
+    flpe_data <- flpe_data %>% rename(sic4dvar_q_mm = sic4dvar_q_mm)
+    flpe_data <- flpe_data %>% rename(sic4dvar_q_da = sic4dvar_q_da)
   }
   
   # PROCESSING
