@@ -10,12 +10,12 @@
 #' @param index integer index to locate reach data for
 #' @param tolerance ??
 run_flpe_diagnostics <- function(input_dir, flpe_dir, output_dir, reaches_json, 
-                                 index, tolerance) {
+                                 index, tolerance, local_bool) {
   # INPUT
   print('getting input files')
   reach_files <- get_input_data(reaches_json, input_dir, index)
   print('getting flpe data')
-  data <- get_data_flpe(reach_files$sos, reach_files$reach_id, input_dir, flpe_dir)
+  data <- get_data_flpe(reach_files$sos, reach_files$reach_id, input_dir, flpe_dir, local_bool)
   
   # PROCESSING
   print('processing')
@@ -153,13 +153,13 @@ flpe_stability_check <- function(current_discharge, previous_discharge, algo_nam
 #' @param output_dir string path to directory to write output to
 #' @param index integer index to locate reach data for
 #' @param tolerance ??
-run_moi_diagnostics <- function(input_dir, flpe_dir, moi_dir, output_dir, index, tolerance) {
+run_moi_diagnostics <- function(input_dir, flpe_dir, moi_dir, output_dir, index, tolerance, local_bool) {
   # INPUT  
   reach_files <- get_input_data(reaches_json, input_dir, index)
   outlist <- get_flpe_current(reach_files$reach_id, input_dir, flpe_dir)
   flpe_data = outlist$df
   success_list = outlist$success_list
-  moi_data <- get_data_moi(reach_files$sos, reach_files$reach_id, input_dir, moi_dir)
+  moi_data <- get_data_moi(reach_files$sos, reach_files$reach_id, input_dir, moi_dir, local_bool)
   
   # FORMAT FLPE DATA FOR DIAGS - currently selects algo31 for diagnostics
   headers = colnames(flpe_data)

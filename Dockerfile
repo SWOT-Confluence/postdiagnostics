@@ -48,5 +48,5 @@ FROM stage3 as stage4
 LABEL version="1.0" \
 	description="Containerized postdiagnostics module (reach-level FLPE)." \
 	"algorithm.contact"="cjgleason@umass.edu"
-ENTRYPOINT [ "/usr/bin/Rscript",  "/app/postdiagnostics/run_flpe.R" ]
-# ENTRYPOINT [ "/usr/bin/Rscript",  "/app/postdiagnostics/run_moi.R" ]
+# ENTRYPOINT [ "/usr/bin/Rscript",  "/app/postdiagnostics/run_flpe.R" ]
+ENTRYPOINT [ "/usr/bin/Rscript",  "/app/postdiagnostics/run_moi.R" ]
