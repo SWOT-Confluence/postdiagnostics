@@ -17,11 +17,16 @@ output_dir <- file.path("/mnt", "data", "output", fsep=.Platform$file.sep)
 
 # Command line arguments
 args <- commandArgs(trailingOnly=TRUE)
-if (length(args) == 3) {
+if (length(args) == 4) {
   tolerance <- strtoi(args[1])
   index <- strtoi(args[2]) + 1
   reaches_json <- args[3]
   s3_bucket <- args[4]
+} else if (length(args) == 3) {
+  tolerance <- strtoi(args[1])
+  index <- strtoi(args[2]) + 1
+  reaches_json <- args[3]
+  s3_bucket <- "confluence-sos"
 } else if (length(args) == 2) {
   tolerance <- strtoi(args[1])
   index <- strtoi(args[2]) + 1

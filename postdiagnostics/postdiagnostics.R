@@ -15,6 +15,7 @@ run_flpe_diagnostics <- function(input_dir, flpe_dir, output_dir, reaches_json,
   # INPUT
   print('getting input files')
   reach_files <- get_input_data(reaches_json, input_dir, index)
+  print(paste0('Running on: ', reach_files$reach_id))
   print('getting flpe data')
   data <- get_data_flpe(reach_files$sos, reach_files$reach_id, input_dir, flpe_dir, s3_bucket)
   
