@@ -21,17 +21,20 @@ if (length(args) == 3) {
   tolerance <- strtoi(args[1])
   index <- strtoi(args[2]) + 1
   reaches_json <- args[3]
+  s3_bucket <- args[4]
 } else if (length(args) == 2) {
   tolerance <- strtoi(args[1])
   index <- strtoi(args[2]) + 1
   reaches_json <- "reaches.json"
+  s3_bucket <- "confluence-sos"
 } else {
   tolerance <- 0.25
   index <- strtoi(Sys.getenv("AWS_BATCH_JOB_ARRAY_INDEX")) + 1
   reaches_json <- "reaches.json"
+  s3_bucket <- "confluence-sos"
 }
 
 # Run diagnostics
-run_flpe_diagnostics(input_dir, flpe_dir, output_dir, reaches_json, index, tolerance)
+run_flpe_diagnostics(input_dir, flpe_dir, output_dir, reaches_json, index, tolerance, s3_bucket)
 end <- Sys.time()
 print(paste0("Execution time: ", end - start))
