@@ -33,15 +33,16 @@ get_input_data <- function(reaches_json, input_dir, index) {
 #' @param reach_id float reach identifier
 #' @param input_dir string path to input data (FLPE, SOS, JSON)
 #' @param flpe_dir string path to directory that contains reach-level flpe data
+#' @param s3_bucket string name of SoS Bucket to download previous results from
 #'
 #' @return named list of current Q dataframe and previous Q dataframe
-get_data_flpe <- function(sos_file, reach_id, input_dir, flpe_dir) {
+get_data_flpe <- function(sos_file, reach_id, input_dir, flpe_dir, s3_bucket) {
   print('getting current')
   outlist <- get_flpe_current(reach_id, input_dir, flpe_dir)
   curr_df = outlist$df
   success_list = outlist$success_list
   print('getting previous')
-  prev_df <- get_flpe_prev(reach_id, sos_file, success_list)
+  prev_df <- get_flpe_prev(reach_id, sos_file, s3_bucket, success_list)
   sos_df <- get_sos_q(sos_file, reach_id)
   print('combining current and sos')
   curr=cbind(curr_df, sos_df)
@@ -259,10 +260,11 @@ get_gb_q_cur <- function(ds, name) {
 #'
 #' @param reach_id integer reach identifier
 #' @param sos_file str path to sos file
+#' @param s3_bucket string name of SoS Bucket to download previous results from
 #' @param success_list a list of algo names to run on
 #'
 #' @return dataframe of previous FLPE discharge data
-get_flpe_prev <- function(reach_id, sos_file, success_list) {
+get_flpe_prev <- function(reach_id, sos_file, s3_bucket, success_list) {
   print('in get flpe prev')
   
   # Result file
@@ -273,7 +275,7 @@ get_flpe_prev <- function(reach_id, sos_file, success_list) {
   # use_virtualenv(VENV_PATH)
   use_python("/usr/bin/python3")
   source_python(PYTHON_FILE)
-  download_previous_result(S3_BUCKET, key, file_name)
+  download_previous_result(s3_bucket, key, file_name)
   
   # index
   sos = open.nc(file_name)
@@ -461,12 +463,13 @@ get_sos_q <- function(sos_file, reach_id) {
 #' @param reach_id float reach identifier
 #' @param input_dir string path to input data (FLPE, SOS, JSON)
 #' @param moi_dir string path to directory that contains basin-level moi data
+#' @param s3_bucket string name of SoS Bucket to download previous results from
 #' 
 #' @return named list of current moi dataframe and previous moi dataframe
-get_data_moi <- function(sos_file, reach_id, input_dir, moi_dir) {
+get_data_moi <- function(sos_file, reach_id, input_dir, moi_dir, s3_bucket) {
   
   curr_df <- get_moi_current(reach_id, input_dir, moi_dir)
-  prev_df <- get_moi_prev(reach_id, sos_file)
+  prev_df <- get_moi_prev(reach_id, sos_file, s3_bucket)
   sos_df <- get_sos_q(sos_file, reach_id)
   sos_df <- subset(sos_df, select=-c(sos_qmean, sos_qsd))
   
@@ -555,9 +558,10 @@ get_moi_current <- function(reach_id, input_dir, moi_dir) {
 #'
 #' @param reach_id integer reach identifier
 #' @param sos_file str path to sos file
+#' @param s3_bucket string name of SoS Bucket to download previous results from
 #'
 #' @return dataframe of previous MOI data
-get_moi_prev <- function(reach_id, sos_file) {
+get_moi_prev <- function(reach_id, sos_file, s3_bucket) {
   
   # result file
   key = get_result_file_name(reach_id, sos_file)
@@ -568,7 +572,7 @@ get_moi_prev <- function(reach_id, sos_file) {
   # use_virtualenv(VENV_PATH)
   use_python("/usr/bin/python3")
   source_python(PYTHON_FILE)
-  download_previous_result(S3_BUCKET, key, file_name)
+  download_previous_result(s3_bucket, key, file_name)
   
   # index
   sos = open.nc(file_name)
