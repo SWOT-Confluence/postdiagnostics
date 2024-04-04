@@ -183,7 +183,7 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
     close.nc(sv)
     # data_list$sic4dvar5_q = sv_q5
     data_list$sic4dvar_q_mm = sv_q_mm
-    data_list$sic4dvar_q_da = sv_q_da
+    data_list$sic4dvar_q = sv_q_da
     success_list = append(success_list, 'sic4dvar')
   } else{
     print('Could not find sic')
@@ -208,9 +208,9 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
         metroman_u <- var.get.nc(metroman, "q_u")[1]
         metroman_u[is.nan(metroman_u)] = NA
     }else{
-        metroman_q <- var.get.nc(metroman, "allq")[,index]
+        metroman_q <- var.get.nc(metroman, "allq")[index]
         metroman_q[is.nan(metroman_q)] = NA
-        metroman_u <- var.get.nc(metroman, "q_u")[,index]
+        metroman_u <- var.get.nc(metroman, "q_u")[index]
         metroman_u[is.nan(metroman_u)] = NA
     }
     close.nc(metroman)
