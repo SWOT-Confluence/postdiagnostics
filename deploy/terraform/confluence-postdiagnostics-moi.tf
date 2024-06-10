@@ -4,7 +4,7 @@ resource "aws_batch_job_definition" "generate_batch_jd_postdiagnostics_moi" {
   type                  = "container"
   container_properties  = <<CONTAINER_PROPERTIES
   {
-    "image": "${local.account_id}.dkr.ecr.us-west-2.amazonaws.com/${var.prefix}-postd-moi",
+    "image": "${local.account_id}.dkr.ecr.us-west-2.amazonaws.com/postd-moi",
     "executionRoleArn": "${data.aws_iam_role.exe_role.arn}",
     "jobRoleArn": "${data.aws_iam_role.job_role.arn}",
     "fargatePlatformConfiguration": { "platformVersion": "LATEST" },
@@ -74,5 +74,7 @@ resource "aws_batch_job_definition" "generate_batch_jd_postdiagnostics_moi" {
   CONTAINER_PROPERTIES
   platform_capabilities = ["FARGATE"]
   propagate_tags        = true
-  tags = { "job_definition": "${var.prefix}-postdiagnostics-moi" }
+   retry_strategy {
+    attempts = 3
+  }
 }
