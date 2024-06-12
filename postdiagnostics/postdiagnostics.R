@@ -195,6 +195,10 @@ moi_diagnostics <- function(flpe_discharge, current_integrator, previous_integra
   
   # algo_names=c("geobam", "hivdi", "momma", "metroman", "sad", "sic4dvar")
 
+  
+
+
+
 
   
   realism_flags=sapply(algo_names, moi_realism_check, current_integrator=current_integrator, simplify=T)

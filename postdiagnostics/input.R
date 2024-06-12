@@ -190,36 +190,42 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
   }
 
   
-  # metroman
-  filename <- list.files(path=file.path(flpe_dir, "metroman", fsep=.Platform$file.sep), 
-                     pattern=paste0(".*", reach_id, ".*", "_metroman\\.nc"), 
-                     recursive=TRUE, 
-                     full.names=TRUE)
-  #list.files returns a path so we do not need to convert, but if it could not find the file it is nan
-  filepath <- filename
+  # # metroman
+  # filename <- list.files(path=file.path(flpe_dir, "metroman", fsep=.Platform$file.sep), 
+  #                    pattern=paste0(".*", reach_id, ".*", "_metroman\\.nc"), 
+  #                    recursive=TRUE, 
+  #                    full.names=TRUE)
+  # #list.files returns a path so we do not need to convert, but if it could not find the file it is nan
+  # filepath <- filename
 
-  if (length(filepath)>0){
-    metroman <- open.nc(filename)
-    reach_ids <- var.get.nc(metroman, "reach_id")
-    index <- which(reach_ids==reach_id, arr.ind=TRUE)
-    if (length(reach_ids)==1){
-        metroman_q <- var.get.nc(metroman, "allq")[1]
-        metroman_q[is.nan(metroman_q)] = NA
-        metroman_u <- var.get.nc(metroman, "q_u")[1]
-        metroman_u[is.nan(metroman_u)] = NA
-    }else{
-        metroman_q <- var.get.nc(metroman, "allq")[index]
-        metroman_q[is.nan(metroman_q)] = NA
-        metroman_u <- var.get.nc(metroman, "q_u")[index]
-        metroman_u[is.nan(metroman_u)] = NA
-    }
-    close.nc(metroman)
-    data_list$metroman_q = metroman_q
-    data_list$metroman_u = metroman_u
-    success_list = append(success_list, 'metroman')
-  } else{
-    print('Could not find metro')
-  }
+  # if (length(filepath)>0){
+  #   print('here is metroman')
+  #   print(filename)
+
+  #   metroman <- open.nc(filename)
+  #   print(filename)
+  #   reach_ids <- var.get.nc(metroman, "reach_id")
+  #   index <- which(reach_ids==reach_id, arr.ind=TRUE)
+  #   if (length(reach_ids)==1){
+  #       metroman_q <- var.get.nc(metroman, "allq")[1]
+  #       metroman_q[is.nan(metroman_q)] = NA
+  #       metroman_u <- var.get.nc(metroman, "q_u")[1]
+  #       metroman_u[is.nan(metroman_u)] = NA
+  #   }else{
+  #       metroman_q <- var.get.nc(metroman, "allq")[index]
+  #       metroman_q[is.nan(metroman_q)] = NA
+  #       metroman_u <- var.get.nc(metroman, "q_u")[index]
+  #       metroman_u[is.nan(metroman_u)] = NA
+  #   }
+  #   close.nc(metroman)
+  #   data_list$metroman_q = metroman_q
+  #   data_list$metroman_u = metroman_u
+  #   success_list = append(success_list, 'metroman')
+  # } else{
+  #   print('Could not find metro')
+  # }
+
+
   print('making dataframe')
   print(names(data_list))
   for (x in 1:length(data_list)){
@@ -232,6 +238,26 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
     print('length')
     print(length(data_list[x]))
   }
+
+  # sometimes metro has a bad nt, we will remove it
+    # Calculate the lengths of all elements
+  lengths <- sapply(data_list, length)
+
+  # Print the original list and lengths for reference
+  cat("Original list lengths:\n")
+  print(lengths)
+
+  # Find the length that appears only once (the odd one out)
+  unique_lengths <- table(lengths)
+  odd_length <- as.numeric(names(unique_lengths[unique_lengths == 1]))
+
+  # # If there's an odd length, remove the corresponding element
+  # if (length(odd_length) == 1) {
+  #   data_list <- data_list[lengths != odd_length]
+  #   success_list <- success_list[lengths != odd_length]
+
+  # }
+
   df = data.frame(data_list)
 
   print('dataframe to list')
@@ -247,11 +273,8 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
 #' @return vector of discharge values
 get_gb_q_cur <- function(ds, name) {
   q_grp = grp.inq.nc(ds, name)$self
-  q_chains <- cbind(var.get.nc(q_grp, "q1"), 
-                        var.get.nc(q_grp, "q2"), 
-                        var.get.nc(q_grp, "q3"))
-  q <- rowMeans(q_chains, na.rm=TRUE)
-  q[is.nan(q)] = NA
+  q <- var.get.nc(q_grp, "q")  # Retrieve the single variable "q"
+  q[is.nan(q)] = NA  # Replace NaN values with NA
   return(q)
 }
 
@@ -309,7 +332,6 @@ get_flpe_prev <- function(reach_id, sos_file, success_list, local_bool) {
   # only run on the algo if it is in the success list
   # geobam
   if ('geobam'%in%success_list){
-    print('geobam')
     gb_grp <- grp.inq.nc(sos, "neobam")$self
     gb_q <- get_gb_q_prev(gb_grp, "q", index)
     data_list$geobam_q = gb_q
@@ -389,7 +411,9 @@ get_flpe_prev <- function(reach_id, sos_file, success_list, local_bool) {
   if(!local_bool){
       file.remove(file_name)
   }
-
+  for (name in names(data_list)) {
+  cat(name, "has length", length(data_list[[name]]), "\n")
+  }
   df = data.frame(data_list)
   return(df)
 }
@@ -430,12 +454,20 @@ get_result_file_name <- function(reach_id, sos_file) {
 #' @return list of lists (mean and standard deviation discharge)
 get_gb_q_prev <- function(ds, name, index) {
   q_grp = grp.inq.nc(ds, name)$self
-  q_chains <- cbind(var.get.nc(q_grp, "q1")[index][[1]], 
-                        var.get.nc(q_grp, "q2")[index][[1]], 
-                        var.get.nc(q_grp, "q3")[index][[1]])
-  q_chains[q_chains == FLOAT_FILL] = NA
-  q <- rowMeans(q_chains, na.rm=TRUE)
+  # q_chains <- cbind(var.get.nc(q_grp, "q1")[index][[1]], 
+  #                       var.get.nc(q_grp, "q2")[index][[1]], 
+  #                       var.get.nc(q_grp, "q3")[index][[1]])
+  # q_chains[q_chains == FLOAT_FILL] = NA
+  # q <- rowMeans(q_chains, na.rm=TRUE)
+  q <- var.get.nc(q_grp, "q")[index][[1]]
   q[is.nan(q)] = NA
+  return(q)
+}
+
+get_gb_q_cur <- function(ds, name) {
+  q_grp = grp.inq.nc(ds, name)$self
+  q <- var.get.nc(q_grp, "q")  # Retrieve the single variable "q"
+  q[is.nan(q)] = NA  # Replace NaN values with NA
   return(q)
 }
 
