@@ -114,10 +114,10 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
     geobam <- open.nc(filepath)
     geobam_q <- get_gb_q_cur(geobam, "q")
     close.nc(geobam)
-    data_list$geobam_q = geobam_q
-    success_list = append(success_list, 'geobam')
+    data_list$neobam_q = geobam_q
+    success_list = append(success_list, 'neobam')
   } else{
-    print('Could not find geobam')
+    print('Could not find neobam')
   }
   
   # hivdi
@@ -331,13 +331,13 @@ get_flpe_prev <- function(reach_id, sos_file, success_list, local_bool) {
   
   # only run on the algo if it is in the success list
   # geobam
-  if ('geobam'%in%success_list){
+  if ('neobam'%in%success_list){
     gb_grp <- grp.inq.nc(sos, "neobam")$self
     gb_q <- get_gb_q_prev(gb_grp, "q", index)
-    data_list$geobam_q = gb_q
+    data_list$neobam_q = gb_q
 
   }else{
-    print('geobam not found')
+    print('neobam not found')
   }
   
   # hivdi
@@ -536,7 +536,7 @@ get_moi_current <- function(reach_id, input_dir, moi_dir) {
   moi <- open.nc(file.path(moi_dir, file, fsep=.Platform$file.sep))
   
   # geobam
-  gb_grp <- grp.inq.nc(moi, "geobam")$self
+  gb_grp <- grp.inq.nc(moi, "neobam")$self
   gb_q <- var.get.nc(gb_grp, "q")
   gb_qmean_b <- var.get.nc(gb_grp, "qbar_reachScale")
   gb_qmean_a <- var.get.nc(gb_grp, "qbar_basinScale")
@@ -573,7 +573,7 @@ get_moi_current <- function(reach_id, input_dir, moi_dir) {
   
   close.nc(moi)
   return(data.frame(date = nt,
-                    geobam_q = gb_q,
+                    neobam_q = gb_q,
                     gb_qmean_b = gb_qmean_b,
                     gb_qmean_a = gb_qmean_a,
                     hivdi_q = hv_q,
@@ -629,7 +629,7 @@ get_moi_prev <- function(reach_id, sos_file, local_bool) {
   nt = var.get.nc(reach_grp, "time")[index][[1]]
   
   # geobam
-  gb_grp <- grp.inq.nc(sos, "moi/geobam")$self
+  gb_grp <- grp.inq.nc(sos, "moi/neobam")$self
   gb_q <- var.get.nc(gb_grp, "q")[index][[1]]
   gb_q[gb_q == FLOAT_FILL] = NA
   gb_qmean_b <- var.get.nc(gb_grp, "qbar_reachScale")[index]
@@ -676,7 +676,7 @@ get_moi_prev <- function(reach_id, sos_file, local_bool) {
   }
   
   return(data.frame(date = nt,
-                    geobam_q = gb_q,
+                    neobam_q = gb_q,
                     gb_qmean_b = gb_qmean_b,
                     gb_qmean_a = gb_qmean_a,
                     hivdi_q = hv_q,

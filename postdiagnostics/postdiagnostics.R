@@ -78,8 +78,8 @@ flpe_diagnostics <- function(current_discharge, previous_discharge, tolerance) {
   if ('hivdi_q'%in%headers){
     algo_names = append(algo_names, 'hivdi')
   }
-  if ('geobam_q'%in%headers){
-    algo_names = append(algo_names, 'geobam')
+  if ('neobam_q'%in%headers){
+    algo_names = append(algo_names, 'neobam')
   }
 
   #run the checks
