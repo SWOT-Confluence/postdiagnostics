@@ -3,7 +3,7 @@ VERS_LENGTH = 4    # length of SoS version identifier
 CONT_LOOKUP = list("af", "eu", "as", "as", "oc", "sa", "na", "na", "na")    # Numeric continent identifier
 S3_BUCKET = "confluence-sos"   # S3 SoS Bucket identifier
 S3_TEMP = "/app/postdiagnostics"    # Path to store temporary SOS file
-RESULT_SUFFIX = "_sword_v15_SOS_results.nc"    # Result file suffix, updated to sword 15
+RESULT_SUFFIX = "_sword_v16_SOS_results.nc"    # Result file suffix, updated to sword 15
 FLOAT_FILL = -999999999999    # NetCDF fill value for float variables
 VENV_PATH = "/app/env"    # Path to Python interpreter
 PYTHON_FILE = "/app/postdiagnostics/get_result_data.py"
@@ -18,7 +18,7 @@ PYTHON_FILE = "/app/postdiagnostics/get_result_data.py"
 #' @param index integer index for JSON file
 #'
 #' @return named list of reach id and associated SoS file
-get_input_data <- function(reaches_json, input_dir, index) {
+get_input_data <- function(reaches_json, input_dir, index, local) {
   json_data <- fromJSON(file=file.path(input_dir, reaches_json, fsep=.Platform$file.sep))[[index]]
   return(list(reach_id=json_data$reach_id,
               sos=file.path(input_dir, "sos", json_data$sos, fsep=.Platform$file.sep)
@@ -33,15 +33,16 @@ get_input_data <- function(reaches_json, input_dir, index) {
 #' @param reach_id float reach identifier
 #' @param input_dir string path to input data (FLPE, SOS, JSON)
 #' @param flpe_dir string path to directory that contains reach-level flpe data
+#' @param s3_bucket string name of SoS Bucket to download previous results from
 #'
 #' @return named list of current Q dataframe and previous Q dataframe
-get_data_flpe <- function(sos_file, reach_id, input_dir, flpe_dir) {
+get_data_flpe <- function(sos_file, reach_id, input_dir, flpe_dir, s3_bucket, local_bool) {
   print('getting current')
   outlist <- get_flpe_current(reach_id, input_dir, flpe_dir)
   curr_df = outlist$df
   success_list = outlist$success_list
   print('getting previous')
-  prev_df <- get_flpe_prev(reach_id, sos_file, success_list)
+  prev_df <- get_flpe_prev(reach_id, sos_file, s3_bucket, success_list, local_bool)
   sos_df <- get_sos_q(sos_file, reach_id)
   print('combining current and sos')
   curr=cbind(curr_df, sos_df)
@@ -114,10 +115,10 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
     geobam <- open.nc(filepath)
     geobam_q <- get_gb_q_cur(geobam, "q")
     close.nc(geobam)
-    data_list$geobam_q = geobam_q
-    success_list = append(success_list, 'geobam')
+    data_list$neobam_q = geobam_q
+    success_list = append(success_list, 'neobam')
   } else{
-    print('Could not find geobam')
+    print('Could not find neobam')
   }
   
   # hivdi
@@ -183,43 +184,49 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
     close.nc(sv)
     # data_list$sic4dvar5_q = sv_q5
     data_list$sic4dvar_q_mm = sv_q_mm
-    data_list$sic4dvar_q_da = sv_q_da
+    data_list$sic4dvar_q = sv_q_da
     success_list = append(success_list, 'sic4dvar')
   } else{
     print('Could not find sic')
   }
 
   
-  # metroman
-  filename <- list.files(path=file.path(flpe_dir, "metroman", fsep=.Platform$file.sep), 
-                     pattern=paste0(".*", reach_id, ".*", "_metroman\\.nc"), 
-                     recursive=TRUE, 
-                     full.names=TRUE)
-  #list.files returns a path so we do not need to convert, but if it could not find the file it is nan
-  filepath <- filename
+  # # metroman
+  # filename <- list.files(path=file.path(flpe_dir, "metroman", fsep=.Platform$file.sep), 
+  #                    pattern=paste0(".*", reach_id, ".*", "_metroman\\.nc"), 
+  #                    recursive=TRUE, 
+  #                    full.names=TRUE)
+  # #list.files returns a path so we do not need to convert, but if it could not find the file it is nan
+  # filepath <- filename
 
-  if (length(filepath)>0){
-    metroman <- open.nc(filename)
-    reach_ids <- var.get.nc(metroman, "reach_id")
-    index <- which(reach_ids==reach_id, arr.ind=TRUE)
-    if (length(reach_ids)==1){
-        metroman_q <- var.get.nc(metroman, "allq")[1]
-        metroman_q[is.nan(metroman_q)] = NA
-        metroman_u <- var.get.nc(metroman, "q_u")[1]
-        metroman_u[is.nan(metroman_u)] = NA
-    }else{
-        metroman_q <- var.get.nc(metroman, "allq")[,index]
-        metroman_q[is.nan(metroman_q)] = NA
-        metroman_u <- var.get.nc(metroman, "q_u")[,index]
-        metroman_u[is.nan(metroman_u)] = NA
-    }
-    close.nc(metroman)
-    data_list$metroman_q = metroman_q
-    data_list$metroman_u = metroman_u
-    success_list = append(success_list, 'metroman')
-  } else{
-    print('Could not find metro')
-  }
+  # if (length(filepath)>0){
+  #   print('here is metroman')
+  #   print(filename)
+
+  #   metroman <- open.nc(filename)
+  #   print(filename)
+  #   reach_ids <- var.get.nc(metroman, "reach_id")
+  #   index <- which(reach_ids==reach_id, arr.ind=TRUE)
+  #   if (length(reach_ids)==1){
+  #       metroman_q <- var.get.nc(metroman, "allq")[1]
+  #       metroman_q[is.nan(metroman_q)] = NA
+  #       metroman_u <- var.get.nc(metroman, "q_u")[1]
+  #       metroman_u[is.nan(metroman_u)] = NA
+  #   }else{
+  #       metroman_q <- var.get.nc(metroman, "allq")[index]
+  #       metroman_q[is.nan(metroman_q)] = NA
+  #       metroman_u <- var.get.nc(metroman, "q_u")[index]
+  #       metroman_u[is.nan(metroman_u)] = NA
+  #   }
+  #   close.nc(metroman)
+  #   data_list$metroman_q = metroman_q
+  #   data_list$metroman_u = metroman_u
+  #   success_list = append(success_list, 'metroman')
+  # } else{
+  #   print('Could not find metro')
+  # }
+
+
   print('making dataframe')
   print(names(data_list))
   for (x in 1:length(data_list)){
@@ -232,6 +239,26 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
     print('length')
     print(length(data_list[x]))
   }
+
+  # sometimes metro has a bad nt, we will remove it
+    # Calculate the lengths of all elements
+  lengths <- sapply(data_list, length)
+
+  # Print the original list and lengths for reference
+  cat("Original list lengths:\n")
+  print(lengths)
+
+  # Find the length that appears only once (the odd one out)
+  unique_lengths <- table(lengths)
+  odd_length <- as.numeric(names(unique_lengths[unique_lengths == 1]))
+
+  # # If there's an odd length, remove the corresponding element
+  # if (length(odd_length) == 1) {
+  #   data_list <- data_list[lengths != odd_length]
+  #   success_list <- success_list[lengths != odd_length]
+
+  # }
+
   df = data.frame(data_list)
 
   print('dataframe to list')
@@ -247,11 +274,8 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
 #' @return vector of discharge values
 get_gb_q_cur <- function(ds, name) {
   q_grp = grp.inq.nc(ds, name)$self
-  q_chains <- cbind(var.get.nc(q_grp, "q1"), 
-                        var.get.nc(q_grp, "q2"), 
-                        var.get.nc(q_grp, "q3"))
-  q <- rowMeans(q_chains, na.rm=TRUE)
-  q[is.nan(q)] = NA
+  q <- var.get.nc(q_grp, "q")  # Retrieve the single variable "q"
+  q[is.nan(q)] = NA  # Replace NaN values with NA
   return(q)
 }
 
@@ -259,10 +283,11 @@ get_gb_q_cur <- function(ds, name) {
 #'
 #' @param reach_id integer reach identifier
 #' @param sos_file str path to sos file
+#' @param s3_bucket string name of SoS Bucket to download previous results from
 #' @param success_list a list of algo names to run on
 #'
 #' @return dataframe of previous FLPE discharge data
-get_flpe_prev <- function(reach_id, sos_file, success_list) {
+get_flpe_prev <- function(reach_id, sos_file, s3_bucket, success_list, local_bool) {
   print('in get flpe prev')
   
   # Result file
@@ -270,10 +295,16 @@ get_flpe_prev <- function(reach_id, sos_file, success_list) {
   
   # S3 access to result file
   file_name = paste(S3_TEMP, tail(strsplit(key, "/")[[1]], n=1), sep="/")
+
   # use_virtualenv(VENV_PATH)
   use_python("/usr/bin/python3")
   source_python(PYTHON_FILE)
-  download_previous_result(S3_BUCKET, key, file_name)
+  if (!local_bool){
+    download_previous_result(s3_bucket, key, file_name)
+  } else {
+    file_name = paste("/mnt/data/results",basename(key), sep="/")
+    print(file_name)
+  }
   
   # index
   sos = open.nc(file_name)
@@ -301,14 +332,13 @@ get_flpe_prev <- function(reach_id, sos_file, success_list) {
   
   # only run on the algo if it is in the success list
   # geobam
-  if ('geobam'%in%success_list){
-    print('geobam')
+  if ('neobam'%in%success_list){
     gb_grp <- grp.inq.nc(sos, "neobam")$self
     gb_q <- get_gb_q_prev(gb_grp, "q", index)
-    data_list$geobam_q = gb_q
+    data_list$neobam_q = gb_q
 
   }else{
-    print('geobam not found')
+    print('neobam not found')
   }
   
   # hivdi
@@ -379,7 +409,12 @@ get_flpe_prev <- function(reach_id, sos_file, success_list) {
   }
   
   close.nc(sos)
-  file.remove(file_name)
+  if(!local_bool){
+      file.remove(file_name)
+  }
+  for (name in names(data_list)) {
+  cat(name, "has length", length(data_list[[name]]), "\n")
+  }
   df = data.frame(data_list)
   return(df)
 }
@@ -420,12 +455,20 @@ get_result_file_name <- function(reach_id, sos_file) {
 #' @return list of lists (mean and standard deviation discharge)
 get_gb_q_prev <- function(ds, name, index) {
   q_grp = grp.inq.nc(ds, name)$self
-  q_chains <- cbind(var.get.nc(q_grp, "q1")[index][[1]], 
-                        var.get.nc(q_grp, "q2")[index][[1]], 
-                        var.get.nc(q_grp, "q3")[index][[1]])
-  q_chains[q_chains == FLOAT_FILL] = NA
-  q <- rowMeans(q_chains, na.rm=TRUE)
+  # q_chains <- cbind(var.get.nc(q_grp, "q1")[index][[1]], 
+  #                       var.get.nc(q_grp, "q2")[index][[1]], 
+  #                       var.get.nc(q_grp, "q3")[index][[1]])
+  # q_chains[q_chains == FLOAT_FILL] = NA
+  # q <- rowMeans(q_chains, na.rm=TRUE)
+  q <- var.get.nc(q_grp, "q")[index][[1]]
   q[is.nan(q)] = NA
+  return(q)
+}
+
+get_gb_q_cur <- function(ds, name) {
+  q_grp = grp.inq.nc(ds, name)$self
+  q <- var.get.nc(q_grp, "q")  # Retrieve the single variable "q"
+  q[is.nan(q)] = NA  # Replace NaN values with NA
   return(q)
 }
 
@@ -461,12 +504,13 @@ get_sos_q <- function(sos_file, reach_id) {
 #' @param reach_id float reach identifier
 #' @param input_dir string path to input data (FLPE, SOS, JSON)
 #' @param moi_dir string path to directory that contains basin-level moi data
+#' @param s3_bucket string name of SoS Bucket to download previous results from
 #' 
 #' @return named list of current moi dataframe and previous moi dataframe
-get_data_moi <- function(sos_file, reach_id, input_dir, moi_dir) {
+get_data_moi <- function(sos_file, reach_id, input_dir, moi_dir, s3_bucket, local_bool) {
   
   curr_df <- get_moi_current(reach_id, input_dir, moi_dir)
-  prev_df <- get_moi_prev(reach_id, sos_file)
+  prev_df <- get_moi_prev(reach_id, sos_file, s3_bucket, local_bool)
   sos_df <- get_sos_q(sos_file, reach_id)
   sos_df <- subset(sos_df, select=-c(sos_qmean, sos_qsd))
   
@@ -490,10 +534,11 @@ get_moi_current <- function(reach_id, input_dir, moi_dir) {
   
   # integrator file
   file <- paste0(reach_id, "_integrator.nc")
+  print(file.path(moi_dir, file, fsep=.Platform$file.sep))
   moi <- open.nc(file.path(moi_dir, file, fsep=.Platform$file.sep))
   
   # geobam
-  gb_grp <- grp.inq.nc(moi, "geobam")$self
+  gb_grp <- grp.inq.nc(moi, "neobam")$self
   gb_q <- var.get.nc(gb_grp, "q")
   gb_qmean_b <- var.get.nc(gb_grp, "qbar_reachScale")
   gb_qmean_a <- var.get.nc(gb_grp, "qbar_basinScale")
@@ -530,7 +575,7 @@ get_moi_current <- function(reach_id, input_dir, moi_dir) {
   
   close.nc(moi)
   return(data.frame(date = nt,
-                    geobam_q = gb_q,
+                    neobam_q = gb_q,
                     gb_qmean_b = gb_qmean_b,
                     gb_qmean_a = gb_qmean_a,
                     hivdi_q = hv_q,
@@ -555,20 +600,25 @@ get_moi_current <- function(reach_id, input_dir, moi_dir) {
 #'
 #' @param reach_id integer reach identifier
 #' @param sos_file str path to sos file
+#' @param s3_bucket string name of SoS Bucket to download previous results from
 #'
 #' @return dataframe of previous MOI data
-get_moi_prev <- function(reach_id, sos_file) {
+get_moi_prev <- function(reach_id, sos_file, s3_bucket, local_bool) {
   
   # result file
   key = get_result_file_name(reach_id, sos_file)
-  print(key)
 
   # S3 access to result file
   file_name = paste(S3_TEMP, tail(strsplit(key, "/")[[1]], n=1), sep="/")
   # use_virtualenv(VENV_PATH)
   use_python("/usr/bin/python3")
   source_python(PYTHON_FILE)
-  download_previous_result(S3_BUCKET, key, file_name)
+  if (!local_bool){
+    download_previous_result(s3_bucket, key, file_name)
+  } else {
+    file_name = paste("/mnt/data/results",basename(key), sep = "/")
+    print(file_name)
+  }
   
   # index
   sos = open.nc(file_name)
@@ -580,7 +630,7 @@ get_moi_prev <- function(reach_id, sos_file) {
   nt = var.get.nc(reach_grp, "time")[index][[1]]
   
   # geobam
-  gb_grp <- grp.inq.nc(sos, "moi/geobam")$self
+  gb_grp <- grp.inq.nc(sos, "moi/neobam")$self
   gb_q <- var.get.nc(gb_grp, "q")[index][[1]]
   gb_q[gb_q == FLOAT_FILL] = NA
   gb_qmean_b <- var.get.nc(gb_grp, "qbar_reachScale")[index]
@@ -622,9 +672,12 @@ get_moi_prev <- function(reach_id, sos_file) {
   mm_qmean_a <- var.get.nc(mm_grp, "qbar_basinScale")[index]
   
   close.nc(sos)
-  file.remove(file_name)
+  if(!local_bool){
+    file.remove(file_name)
+  }
+  
   return(data.frame(date = nt,
-                    geobam_q = gb_q,
+                    neobam_q = gb_q,
                     gb_qmean_b = gb_qmean_b,
                     gb_qmean_a = gb_qmean_a,
                     hivdi_q = hv_q,

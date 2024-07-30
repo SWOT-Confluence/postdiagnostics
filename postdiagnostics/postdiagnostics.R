@@ -8,14 +8,16 @@
 #' @param reaches_json str name of JSON file with reach data
 #' @param output_dir string path to directory to write output to
 #' @param index integer index to locate reach data for
-#' @param tolerance ??
+#' @param tolerance ?
+#' @param s3_bucket string name of SoS Bucket to download previous results from
 run_flpe_diagnostics <- function(input_dir, flpe_dir, output_dir, reaches_json, 
-                                 index, tolerance) {
+                                 index, tolerance, s3_bucket, local_bool) {
   # INPUT
   print('getting input files')
   reach_files <- get_input_data(reaches_json, input_dir, index)
+  print(paste0('Running on: ', reach_files$reach_id))
   print('getting flpe data')
-  data <- get_data_flpe(reach_files$sos, reach_files$reach_id, input_dir, flpe_dir)
+  data <- get_data_flpe(reach_files$sos, reach_files$reach_id, input_dir, flpe_dir, s3_bucket, local_bool)
   
   # PROCESSING
   print('processing')
@@ -78,8 +80,8 @@ flpe_diagnostics <- function(current_discharge, previous_discharge, tolerance) {
   if ('hivdi_q'%in%headers){
     algo_names = append(algo_names, 'hivdi')
   }
-  if ('geobam_q'%in%headers){
-    algo_names = append(algo_names, 'geobam')
+  if ('neobam_q'%in%headers){
+    algo_names = append(algo_names, 'neobam')
   }
 
   #run the checks
@@ -153,22 +155,23 @@ flpe_stability_check <- function(current_discharge, previous_discharge, algo_nam
 #' @param output_dir string path to directory to write output to
 #' @param index integer index to locate reach data for
 #' @param tolerance ??
-run_moi_diagnostics <- function(input_dir, flpe_dir, moi_dir, output_dir, index, tolerance) {
+#' @param s3_bucket string name of SoS Bucket to download previous results from
+run_moi_diagnostics <- function(input_dir, flpe_dir, moi_dir, output_dir, index, tolerance, s3_bucket, local_bool) {
   # INPUT  
   reach_files <- get_input_data(reaches_json, input_dir, index)
   outlist <- get_flpe_current(reach_files$reach_id, input_dir, flpe_dir)
   flpe_data = outlist$df
   success_list = outlist$success_list
-  moi_data <- get_data_moi(reach_files$sos, reach_files$reach_id, input_dir, moi_dir)
+  moi_data <- get_data_moi(reach_files$sos, reach_files$reach_id, input_dir, moi_dir, s3_bucket, local_bool)
   
   # FORMAT FLPE DATA FOR DIAGS - currently selects algo31 for diagnostics
   headers = colnames(flpe_data)
 
-  if ('sic4dvar_q_mm'%in%headers){
-    # flpe_data <- subset(flpe_data, select=-c({old_algo_name}))
-    flpe_data <- flpe_data %>% rename(sic4dvar_q_mm = sic4dvar_q_mm)
-    flpe_data <- flpe_data %>% rename(sic4dvar_q_da = sic4dvar_q_da)
-  }
+  # if ('sic4dvar_q_mm'%in%headers){
+  #   # flpe_data <- subset(flpe_data, select=-c({old_algo_name}))
+  #   flpe_data <- flpe_data %>% rename(sic4dvar_q_mm = sic4dvar_q_mm)
+  #   flpe_data <- flpe_data %>% rename(sic4dvar_q_da = sic4dvar_q_da)
+  # }
   
   # PROCESSING
   diag_data_moi <- moi_diagnostics(flpe_data, moi_data$curr, moi_data$prev, tolerance, success_list)
@@ -194,6 +197,10 @@ moi_diagnostics <- function(flpe_discharge, current_integrator, previous_integra
   # "sos_qmin" and "sos_qmax" are SoS priors
   
   # algo_names=c("geobam", "hivdi", "momma", "metroman", "sad", "sic4dvar")
+
+  
+
+
 
 
   
