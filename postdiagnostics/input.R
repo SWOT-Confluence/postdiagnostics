@@ -1,12 +1,12 @@
 # Constants
 VERS_LENGTH = 4    # length of SoS version identifier
 CONT_LOOKUP = list("af", "eu", "as", "as", "oc", "sa", "na", "na", "na")    # Numeric continent identifier
-S3_BUCKET = "confluence-sos"   # S3 SoS Bucket identifier
 S3_TEMP = "/app/postdiagnostics"    # Path to store temporary SOS file
 RESULT_SUFFIX = "_sword_v16_SOS_results.nc"    # Result file suffix, updated to sword 15
 FLOAT_FILL = -999999999999    # NetCDF fill value for float variables
-VENV_PATH = "/app/env"    # Path to Python interpreter
-PYTHON_FILE = "/app/postdiagnostics/get_result_data.py"
+PYTHON_EXE = "/usr/bin/python3"
+PYTHON_FILE = "/app/sos_read/sos_read.py"
+TMP_PATH = "/tmp"
 
 #' Gets reference to reach identifier and SoS file
 #' 
@@ -18,11 +18,22 @@ PYTHON_FILE = "/app/postdiagnostics/get_result_data.py"
 #' @param index integer index for JSON file
 #'
 #' @return named list of reach id and associated SoS file
-get_input_data <- function(reaches_json, input_dir, index, local) {
+get_input_data <- function(reaches_json, input_dir, index, current_bucket) {
   json_data <- fromJSON(file=file.path(input_dir, reaches_json, fsep=.Platform$file.sep))[[index]]
-  return(list(reach_id=json_data$reach_id,
-              sos=file.path(input_dir, "sos", json_data$sos, fsep=.Platform$file.sep)
-  ))
+  
+  if (current_bucket != "") {
+    use_python(PYTHON_EXE)
+    source_python(PYTHON_FILE)
+    sos_filepath = file.path(TMP_PATH, json_data$sos)
+    download_sos(current_bucket, sos_filepath)
+    reach_list = list(reach_id=json_data$reach_id,
+                      sos=sos_filepath)
+  } else {
+    reach_list = list(reach_id=json_data$reach_id,
+                      sos=file.path(input_dir, "sos", json_data$sos, fsep=.Platform$file.sep))
+  }
+  
+  return(reach_list)
 }
 
 #' Get FLPE discharge data (priors and posteriors)
@@ -36,13 +47,14 @@ get_input_data <- function(reaches_json, input_dir, index, local) {
 #' @param s3_bucket string name of SoS Bucket to download previous results from
 #'
 #' @return named list of current Q dataframe and previous Q dataframe
-get_data_flpe <- function(sos_file, reach_id, input_dir, flpe_dir, s3_bucket, local_bool) {
+get_data_flpe <- function(sos_file, reach_id, input_dir, flpe_dir,
+                          previous_bucket, local_bool) {
   print('getting current')
   outlist <- get_flpe_current(reach_id, input_dir, flpe_dir)
   curr_df = outlist$df
   success_list = outlist$success_list
   print('getting previous')
-  prev_df <- get_flpe_prev(reach_id, sos_file, s3_bucket, success_list, local_bool)
+  prev_df <- get_flpe_prev(reach_id, sos_file, previous_bucket, success_list, local_bool)
   sos_df <- get_sos_q(sos_file, reach_id)
   print('combining current and sos')
   curr=cbind(curr_df, sos_df)
@@ -290,17 +302,14 @@ get_gb_q_cur <- function(ds, name) {
 get_flpe_prev <- function(reach_id, sos_file, s3_bucket, success_list, local_bool) {
   print('in get flpe prev')
   
-  # Result file
   key = get_result_file_name(reach_id, sos_file)
-  
-  # S3 access to result file
-  file_name = paste(S3_TEMP, tail(strsplit(key, "/")[[1]], n=1), sep="/")
-
-  # use_virtualenv(VENV_PATH)
-  use_python("/usr/bin/python3")
-  source_python(PYTHON_FILE)
   if (!local_bool){
-    download_previous_result(s3_bucket, key, file_name)
+    use_python(PYTHON_EXE)
+    source_python(PYTHON_FILE)
+    bucket_key = paste0(s3_bucket, "/", dirname(key))
+    print(paste("bucket_key", bucket_key))
+    file_name = paste(S3_TEMP, basename(key), sep="/")
+    download_sos(bucket_key, file_name)
   } else {
     file_name = paste("/mnt/data/results",basename(key), sep="/")
     print(file_name)
@@ -504,13 +513,14 @@ get_sos_q <- function(sos_file, reach_id) {
 #' @param reach_id float reach identifier
 #' @param input_dir string path to input data (FLPE, SOS, JSON)
 #' @param moi_dir string path to directory that contains basin-level moi data
-#' @param s3_bucket string name of SoS Bucket to download previous results from
+#' @param previous_bucket string name of SoS Bucket to download previous results from
 #' 
 #' @return named list of current moi dataframe and previous moi dataframe
-get_data_moi <- function(sos_file, reach_id, input_dir, moi_dir, s3_bucket, local_bool) {
+get_data_moi <- function(sos_file, reach_id, input_dir, moi_dir,
+                         previous_bucket, local_bool) {
   
   curr_df <- get_moi_current(reach_id, input_dir, moi_dir)
-  prev_df <- get_moi_prev(reach_id, sos_file, s3_bucket, local_bool)
+  prev_df <- get_moi_prev(reach_id, sos_file, previous_bucket, local_bool)
   sos_df <- get_sos_q(sos_file, reach_id)
   sos_df <- subset(sos_df, select=-c(sos_qmean, sos_qsd))
   
@@ -607,16 +617,15 @@ get_moi_prev <- function(reach_id, sos_file, s3_bucket, local_bool) {
   
   # result file
   key = get_result_file_name(reach_id, sos_file)
-
-  # S3 access to result file
-  file_name = paste(S3_TEMP, tail(strsplit(key, "/")[[1]], n=1), sep="/")
-  # use_virtualenv(VENV_PATH)
-  use_python("/usr/bin/python3")
-  source_python(PYTHON_FILE)
   if (!local_bool){
-    download_previous_result(s3_bucket, key, file_name)
+    use_python(PYTHON_EXE)
+    source_python(PYTHON_FILE)
+    bucket_key = paste0(s3_bucket, "/", dirname(key))
+    print(paste("bucket_key", bucket_key))
+    file_name = paste(S3_TEMP, basename(key), sep="/")
+    download_sos(bucket_key, file_name)
   } else {
-    file_name = paste("/mnt/data/results",basename(key), sep = "/")
+    file_name = paste("/mnt/data/results",basename(key), sep="/")
     print(file_name)
   }
   

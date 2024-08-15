@@ -9,15 +9,18 @@
 #' @param output_dir string path to directory to write output to
 #' @param index integer index to locate reach data for
 #' @param tolerance ?
-#' @param s3_bucket string name of SoS Bucket to download previous results from
+#' @param previous_bucket string name of SoS Bucket to download previous results from
+#' @param current_bucket string name of bucket and key prefix to download current SoS from
 run_flpe_diagnostics <- function(input_dir, flpe_dir, output_dir, reaches_json, 
-                                 index, tolerance, s3_bucket, local_bool) {
+                                 index, tolerance, current_bucket,
+                                 previous_bucket, local_bool) {
   # INPUT
   print('getting input files')
-  reach_files <- get_input_data(reaches_json, input_dir, index)
+  reach_files <- get_input_data(reaches_json, input_dir, index, current_bucket)
   print(paste0('Running on: ', reach_files$reach_id))
   print('getting flpe data')
-  data <- get_data_flpe(reach_files$sos, reach_files$reach_id, input_dir, flpe_dir, s3_bucket, local_bool)
+  data <- get_data_flpe(reach_files$sos, reach_files$reach_id, input_dir,
+                        flpe_dir, previous_bucket, local_bool)
   
   # PROCESSING
   print('processing')
@@ -155,15 +158,19 @@ flpe_stability_check <- function(current_discharge, previous_discharge, algo_nam
 #' @param output_dir string path to directory to write output to
 #' @param index integer index to locate reach data for
 #' @param tolerance ??
-#' @param s3_bucket string name of SoS Bucket to download previous results from
-run_moi_diagnostics <- function(input_dir, flpe_dir, moi_dir, output_dir, index, tolerance, s3_bucket, local_bool) {
-  # INPUT  
-  reach_files <- get_input_data(reaches_json, input_dir, index)
+#' @param previous_bucket string name of SoS Bucket to download previous results from
+#' @param current_bucket string name of bucket and key prefix to download current SoS from
+run_moi_diagnostics <- function(input_dir, flpe_dir, moi_dir, output_dir, index,
+                                tolerance, current_bucket, previous_bucket,
+                                local_bool) {
+  # INPUT
+  reach_files <- get_input_data(reaches_json, input_dir, index, current_bucket)
   outlist <- get_flpe_current(reach_files$reach_id, input_dir, flpe_dir)
-  flpe_data = outlist$df
-  success_list = outlist$success_list
-  moi_data <- get_data_moi(reach_files$sos, reach_files$reach_id, input_dir, moi_dir, s3_bucket, local_bool)
-  
+  flpe_data <- outlist$df
+  success_list <- outlist$success_list
+  moi_data <- get_data_moi(reach_files$sos, reach_files$reach_id, input_dir,
+                           moi_dir, previous_bucket, local_bool)
+
   # FORMAT FLPE DATA FOR DIAGS - currently selects algo31 for diagnostics
   headers = colnames(flpe_data)
 
