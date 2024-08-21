@@ -5,7 +5,7 @@ S3_TEMP = "/app/postdiagnostics"    # Path to store temporary SOS file
 RESULT_SUFFIX = "_sword_v16_SOS_results.nc"    # Result file suffix, updated to sword 15
 FLOAT_FILL = -999999999999    # NetCDF fill value for float variables
 PYTHON_EXE = "/usr/bin/python3"
-PYTHON_FILE = "/app/sos_read/sos_read.py"
+PYTHON_FILE = "/app/postdiagnostics/sos_read/sos_read.py"
 TMP_PATH = "/tmp"
 
 #' Gets reference to reach identifier and SoS file
