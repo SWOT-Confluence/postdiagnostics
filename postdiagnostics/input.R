@@ -134,20 +134,20 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
   }
   
   # hivdi
-  filename <- paste0(reach_id, "_hivdi.nc")
-  filepath <- file.path(flpe_dir, "hivdi", filename, fsep=.Platform$file.sep)
-  print(filepath)
+  # filename <- paste0(reach_id, "_h2ivdi.nc")
+  # filepath <- file.path(flpe_dir, "hivdi", filename, fsep=.Platform$file.sep)
+  # print(filepath)
 
-  if (file.exists(filepath)){
-    hivdi <- open.nc(filepath)
-    hv_grp <- grp.inq.nc(hivdi, "reach")$self
-    hivdi_q <- var.get.nc(hv_grp, "Q")
-    close.nc(hivdi)
-    data_list$hivdi_q = hivdi_q
-    success_list = c(success_list, 'hivdi')
-  } else{
-    print('Could not find')
-  }
+  # if (file.exists(filepath)){
+  #   hivdi <- open.nc(filepath)
+  #   hv_grp <- grp.inq.nc(hivdi, "reach")$self
+  #   hivdi_q <- var.get.nc(hv_grp, "Q")
+  #   close.nc(hivdi)
+  #   data_list$hivdi_q = hivdi_q
+  #   success_list = c(success_list, 'hivdi')
+  # } else{
+  #   print('Could not find')
+  # }
 
   
   # momma
@@ -195,13 +195,33 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
     sv_q_da <- var.get.nc(sv, "Q_da")
     close.nc(sv)
     # data_list$sic4dvar5_q = sv_q5
-    data_list$sic4dvar_q_mm = sv_q_mm
+    data_list$sic4dvar_mm_q = sv_q_mm
     data_list$sic4dvar_q = sv_q_da
     success_list = append(success_list, 'sic4dvar')
   } else{
     print('Could not find sic')
   }
 
+
+  # metroman
+  filename <- paste0(reach_id, "_metroman.nc")
+  filepath <- file.path(flpe_dir, "metroman", filename, fsep=.Platform$file.sep)
+  print(filepath)
+
+  if (file.exists(filepath)){
+    sv <- open.nc(filepath)
+    # sv_q5 <- var.get.nc(sv, "Qalgo5")
+    mm_average <- grp.inq.nc(sv, "average")$self
+    mm_q <- var.get.nc(mm_average, "allq")
+    mm_u <- var.get.nc(mm_average, "q_u")
+    close.nc(sv)
+    # data_list$sic4dvar5_q = sv_q5
+    data_list$metroman_q = mm_q
+    data_list$metroman_q_u = mm_u
+    success_list = append(success_list, 'metroman')
+  } else{
+    print('Could not find metroman')
+  }
   
   # # metroman
   # filename <- list.files(path=file.path(flpe_dir, "metroman", fsep=.Platform$file.sep), 
@@ -397,8 +417,8 @@ get_flpe_prev <- function(reach_id, sos_file, s3_bucket, success_list, local_boo
     sv_q_da <- var.get.nc(sv_grp, "Q_da")[index][[1]]
     sv_q_da[sv_q_da == FLOAT_FILL] = NA
     # data_list$sic4dvar5_q = sv_q5
-    data_list$sic4dvar_q_mm = sv_q_mm
-    data_list$sic4dvar_q_da = sv_q_da
+    data_list$sic4dvar_mm_q = sv_q_mm
+    data_list$sic4dvar_q = sv_q_da
   }else{
     print('Sic not found')
   }
@@ -407,6 +427,7 @@ get_flpe_prev <- function(reach_id, sos_file, s3_bucket, success_list, local_boo
   if ('metroman'%in%success_list){
     print('metro')
     mm_grp <- grp.inq.nc(sos, "metroman")$self
+    # mm_average <- grp.inq.nc(mm_grp, "average")$self
     mm_q <- var.get.nc(mm_grp, "allq")[index][[1]]
     mm_q[mm_q == FLOAT_FILL] = NA
     mm_u <- var.get.nc(mm_grp, "q_u")[index][[1]]

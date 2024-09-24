@@ -65,15 +65,18 @@ flpe_diagnostics <- function(current_discharge, previous_discharge, tolerance) {
   algo_names = list()
 
   # created dynamic algo names list by referencing the headers of current discharge
+  print('here are headers!!')
+  print(headers)
 
-  if ('sic4dvarmm_q'%in%headers){
-    algo_names = append(algo_names, "sic4dvar_q_mm")
-    algo_names = append(algo_names, "sic4dvar_q_da")
+  if ('sic4dvar_mm_q'%in%headers){
+    algo_names = append(algo_names, "sic4dvar_mm")
+    algo_names = append(algo_names, "sic4dvar")
   }
   if ('sad_q'%in%headers){
     algo_names = append(algo_names, 'sad')
   }
   if ('metroman_q'%in%headers){
+    print('found metro...')
     algo_names = append(algo_names, 'metroman')
   }
   if ('momma_q'%in%headers){
