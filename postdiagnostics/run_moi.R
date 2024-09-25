@@ -28,7 +28,15 @@ option_list <- list(
 )
 opt_parser <- OptionParser(option_list = option_list)
 opts <- parse_args(opt_parser)
-index <- opts$index + 1    # Add 1 to AWS 0-based index
+# Parse index
+index <- opts$index
+
+# Check if we are running via env variable...
+if (index == -256){
+  index <- strtoi(Sys.getenv("AWS_BATCH_JOB_ARRAY_INDEX"))
+}
+
+index <- index + 1    # Add 1 to AWS 0-based index
 tolerance <- opts$tolerance
 current_bucket <- opts$current_bucket
 reaches_json <- opts$reaches_json
