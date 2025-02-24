@@ -18,6 +18,9 @@ resource "aws_batch_job_definition" "generate_batch_jd_postdiagnostics_moi" {
       {"type": "MEMORY", "value": "1024"},
       {"type": "VCPU", "value": "0.5"}
     ],
+    "ephemeralStorage": {
+      "sizeInGiB": 30
+    },
     "mountPoints": [
       {
         "sourceVolume": "input",
@@ -74,5 +77,5 @@ resource "aws_batch_job_definition" "generate_batch_jd_postdiagnostics_moi" {
   CONTAINER_PROPERTIES
   platform_capabilities = ["FARGATE"]
   propagate_tags        = true
-  tags = { "job_definition": "${var.prefix}-postdiagnostics-moi" }
+  tags                  = { "job_definition" : "${var.prefix}-postdiagnostics-moi" }
 }
