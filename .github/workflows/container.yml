@@ -44,7 +44,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels) for Docker
+      - name: Extract metadata (tags, labels) for Docker FLPE
         id: meta-flpe
         uses: docker/metadata-action@v5
         with:
@@ -54,7 +54,7 @@ jobs:
           flavor: |
             latest=true
 
-      - name: Build and push Docker image
+      - name: Build and push Docker image FLPE
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -64,7 +64,7 @@ jobs:
           tags: ${{ steps.meta-flpe.outputs.tags }}
           labels: ${{ steps.meta-flpe.outputs.labels }}
 
-      - name: Extract metadata (tags, labels) for Docker
+      - name: Extract metadata (tags, labels) for Docker MOI
         id: meta-moi
         uses: docker/metadata-action@v5
         with:
@@ -74,7 +74,7 @@ jobs:
           flavor: |
             latest=true
 
-      - name: Build and push Docker image
+      - name: Build and push Docker image MOI
         uses: docker/build-push-action@v5
         with:
           context: .
