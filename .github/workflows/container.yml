@@ -17,8 +17,8 @@ concurrency:
 
 # Environment variables
 env:
-  POSTD_FLPE_IMAGE_NAME: "postdiagnostics_flpe"
-  POSTD_MOI_IMAGE_NAME: "postdiagnostics_moi"
+  POSTD_FLPE_IMAGE_NAME: "swot-confluence/postdiagnostics_flpe"
+  POSTD_MOI_IMAGE_NAME: "swot-confluence/postdiagnostics_moi"
   POETRY_VERSION: "2.1.1"
   PYTHON_VERSION: "3.10"
   REGISTRY: ghcr.io
