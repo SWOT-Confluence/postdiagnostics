@@ -19,6 +19,30 @@ provider "aws" {
 
 data "aws_caller_identity" "current" {}
 
+data "aws_efs_file_system" "input" {
+  creation_token = "${var.prefix}-input"
+}
+
+data "aws_efs_file_system" "flpe" {
+  creation_token = "${var.prefix}-flpe"
+}
+
+data "aws_efs_file_system" "moi" {
+  creation_token = "${var.prefix}-moi"
+}
+
+data "aws_efs_file_system" "diagnostics" {
+  creation_token = "${var.prefix}-diagnostics"
+}
+
+data "aws_iam_role" "job" {
+  name = "${var.prefix}-batch-job-role"
+}
+
+data "aws_iam_role" "exec" {
+  name = "${var.prefix}-ecs-exe-task-role"
+}
+
 locals {
   account_id = sensitive(data.aws_caller_identity.current.account_id)
   default_tags = length(var.default_tags) == 0 ? {
@@ -29,10 +53,18 @@ locals {
 }
 
 module "confluence-postdiagnostics" {
-  source            = "./modules/postdiagnostics"
-  app_name          = var.app_name
-  app_version       = var.app_version
-  aws_region        = var.aws_region
-  environment       = var.environment
-  prefix            = var.prefix
+  source = "./modules/postdiagnostics"
+  app_name = var.app_name
+  app_version = var.app_version
+  aws_region = var.aws_region
+  efs_file_system_ids = {
+    input = data.aws_efs_file_system.input.file_system_id
+    flpe = data.aws_efs_file_system.flpe.file_system_id
+    moi = data.aws_efs_file_system.moi.file_system_id
+    diagnostics = data.aws_efs_file_system.diagnostics.file_system_id
+  }
+  environment = var.environment
+  iam_execution_role_arn = data.aws_iam_role.exec.arn
+  iam_job_role_arn = data.aws_iam_role.job.arn
+  prefix = var.prefix
 }
