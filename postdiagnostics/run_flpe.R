@@ -10,6 +10,8 @@ source("/app/postdiagnostics/input.R")
 source("/app/postdiagnostics/postdiagnostics.R")
 source("/app/postdiagnostics/output.R")
 
+# docker run -v /mnt/input:/mnt/data/input -v /mnt/flpe:/mnt/data/flpe -v /mnt/input/postdiag_consensus_update:/mnt/data/output postdiag_flpe -i 0 -b all
+
 # Directories
 start <- Sys.time()
 input_dir <- file.path("/mnt", "data", "input", fsep=.Platform$file.sep)

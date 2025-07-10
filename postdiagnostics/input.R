@@ -293,6 +293,8 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
 
   df = data.frame(data_list)
 
+  write.csv(df, "/mnt/data/output/consensus.csv", row.names = FALSE)
+
   print('dataframe to list')
   outlist <- list("df" = df, "success_list" = success_list)
   return(outlist)
