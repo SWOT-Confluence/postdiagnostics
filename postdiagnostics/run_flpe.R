@@ -10,7 +10,7 @@ source("/app/postdiagnostics/input.R")
 source("/app/postdiagnostics/postdiagnostics.R")
 source("/app/postdiagnostics/output.R")
 
-# docker run -v /mnt/input:/mnt/data/input -v /mnt/flpe:/mnt/data/flpe -v /mnt/input/postdiag_consensus_update:/mnt/data/output postdiag_flpe -i 0 -b all
+# docker run -v /mnt/flpe/ssc:/mnt/data/input -v /mnt/flpe/ssc/sos:/mnt/data/results -v /mnt/flpe/ssc/flpe:/mnt/data/flpe -v /mnt/input/postdiag_consensus_update:/mnt/data/output postdiag_flpe -i 0 -l TRUE
 
 # Directories
 start <- Sys.time()
@@ -24,7 +24,8 @@ option_list <- list(
   make_option(c("-t", "--tolerance"), type = "integer", default = 0.25, help = "Tolerance value for stability check"),
   make_option(c("-b", "--current_bucket"), type = "character", default = "", help = "Bucket key to find the sos"),
   make_option(c("-r", "--reaches_json"), type = "character", default = "reaches.json", help = "Name of reaches.json"),
-  make_option(c("-l", "--local_bool"), type = "logical", default = FALSE, help = "Name of reaches.json"),
+  make_option(c("-l", "--local_bool"), type = "logical", default = FALSE, help = "Boolian for running locally"),
+  make_option(c("-c", "--chunking_bool"), type = "logical", default = FALSE, help = "Boolian for running groups of reaches"),
   make_option(c("-p", "--previous_bucket"), type = "character", default = "confluence-sos", help = "Name of SoS bucket to pull previous results")
 )
 opt_parser <- OptionParser(option_list = option_list)
@@ -42,6 +43,7 @@ tolerance <- opts$tolerance
 current_bucket <- opts$current_bucket
 reaches_json <- opts$reaches_json
 local_bool <- opts$local_bool
+chunking_bool <- opts$chunking_bool
 previous_bucket <- opts$previous_bucket
 print(paste("index: ", index))
 print(paste("tolerance: ", tolerance))
@@ -52,6 +54,6 @@ print(paste("previous_bucket: ", previous_bucket))
 
 # Run diagnostics
 run_flpe_diagnostics(input_dir, flpe_dir, output_dir, reaches_json, index,
-                     tolerance, current_bucket, previous_bucket, local_bool)
+                     tolerance, current_bucket, previous_bucket, local_bool, chunking_bool)
 end <- Sys.time()
 print(paste0("Execution time: ", end - start))

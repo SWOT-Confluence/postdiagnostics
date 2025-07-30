@@ -18,21 +18,45 @@ TMP_PATH = "/tmp"
 #' @param index integer index for JSON file
 #'
 #' @return named list of reach id and associated SoS file
-get_input_data <- function(reaches_json, input_dir, index, current_bucket) {
-  json_data <- fromJSON(file=file.path(input_dir, reaches_json, fsep=.Platform$file.sep))[[index]]
-  
-  if (current_bucket != "") {
-    use_python(PYTHON_EXE)
-    source_python(PYTHON_FILE)
-    sos_filepath = file.path(TMP_PATH, json_data$sos)
-    download_sos(current_bucket, sos_filepath)
-    reach_list = list(reach_id=json_data$reach_id,
-                      sos=sos_filepath)
-  } else {
-    reach_list = list(reach_id=json_data$reach_id,
-                      sos=file.path(input_dir, "sos", json_data$sos, fsep=.Platform$file.sep))
+get_input_data <- function(reaches_json, input_dir, index, current_bucket, chunking_bool) {
+
+  # Load JSON as a list
+  if (chunking_bool){
+    json_list <- fromJSON(file=file.path(input_dir, reaches_json, fsep=.Platform$file.sep))
+    json_list <- get_json_chunk(json_list, total_jobs = 1500, job_number = index)
+
+  }else{
+    json_list <- list(fromJSON(file=file.path(input_dir, reaches_json, fsep=.Platform$file.sep))[[index]])
   }
+
+
+  # Loop and extract reach_id and sos
+  reach_list <- lapply(json_list, function(entry) {
+    if (!is.null(entry$reach_id) && !is.null(entry$sos)) {
+      list(
+        reach_id = entry$reach_id,
+        sos = file.path("/mnt/data/input/sos", basename(entry$sos))
+      )
+    } else {
+      NULL
+    }
+  })
+
+  # Remove NULL entries (those that didn't have reach_id or sos)
+  reach_list <- Filter(Negate(is.null), reach_list)
+  # json_data <- fromJSON(file=file.path(input_dir, reaches_json, fsep=.Platform$file.sep))[[index]]
   
+  # if (current_bucket != "") {
+  #   use_python(PYTHON_EXE)
+  #   source_python(PYTHON_FILE)
+  #   sos_filepath = file.path(TMP_PATH, json_data$sos)
+  #   download_sos(current_bucket, sos_filepath)
+  #   reach_list = list(reach_id=json_data$reach_id,
+  #                     sos=sos_filepath)
+  # } else {
+  #   reach_list = list(reach_id=json_data$reach_id,
+  #                     sos=file.path(input_dir, "sos", json_data$sos, fsep=.Platform$file.sep))
+  # }
   return(reach_list)
 }
 
@@ -51,17 +75,76 @@ get_data_flpe <- function(sos_file, reach_id, input_dir, flpe_dir,
                           previous_bucket, local_bool) {
   print('getting current')
   outlist <- get_flpe_current(reach_id, input_dir, flpe_dir)
-  curr_df = outlist$df
-  success_list = outlist$success_list
-  print('getting previous')
-  prev_df <- get_flpe_prev(reach_id, sos_file, previous_bucket, success_list, local_bool)
-  sos_df <- get_sos_q(sos_file, reach_id)
-  print('combining current and sos')
-  curr=cbind(curr_df, sos_df)
-  print('combining previous and sos')
-  prev=cbind(prev_df, sos_df)
-  return(list(curr= curr, prev = prev))
+
+ #-------------------RETURN TOO TURN BACK ON PROCESSING------------------------
+  # curr_df = outlist$df
+  # success_list = outlist$success_list
+  # print('getting previous')
+  # prev_df <- get_flpe_prev(reach_id, sos_file, previous_bucket, success_list, local_bool)
+  # sos_df <- get_sos_q(sos_file, reach_id)
+  # print('combining current and sos')
+  # curr=cbind(curr_df, sos_df)
+  # print('combining previous and sos')
+  # prev=cbind(prev_df, sos_df)
+  # return(list(curr= curr, prev = prev))
+  return('foo')
 }
+
+get_json_chunk <- function(json_list, total_jobs, job_number) {
+  if (job_number < 1 || job_number > total_jobs) {
+    stop("job_number must be between 1 and total_jobs")
+  }
+  
+  total_items <- length(json_list)
+  items_per_job <- ceiling(total_items / total_jobs)
+  
+  start_index <- ((job_number - 1) * items_per_job) + 1
+  end_index <- min(job_number * items_per_job, total_items)
+  
+  return(json_list[start_index:end_index])
+}
+
+create_consensus_q <- function(df, reach_id){
+
+  print('here ')
+  print(df)
+  print('there')
+  # select columns ending in _q
+  q_cols <- grep("_q$", names(df), value = TRUE)
+
+  # median of columns
+  df$median <- apply(df[q_cols], 1, median, na.rm = TRUE)
+
+  # std or 1 sigma
+  df$std     <- apply(df[q_cols], 1, sd, na.rm = TRUE)
+
+  # how many were used to calculate this median and std
+  df$count  <- apply(df[q_cols], 1, function(x) sum(!is.na(x)))
+
+  # build pretty dataframe
+  # eliminate the u and the mm_q cols
+  #exclude <- c("sad_u", "sic4dvar_mm_q")
+  # eliminate columns that are not date and do not end in q
+  exclude <- names(df)[names(df) != "date" & names(df) != "median" & names(df) != "std" & names(df) != "count" & !grepl("_q$", names(df))]
+
+  df <- df[, !(names(df) %in% exclude)]
+
+  # change format of the date
+
+  df$date <- as.POSIXct(df$date, origin = "2000-01-01", tz = "UTC") #using swot timestamp
+  df$date <- format(df$date, "%Y-%m-%d")
+
+  # save to one csv
+  # fileloc2=paste(workfolder, "median_std_count.csv" , sep = "/", collapse = NULL)
+  # write.csv(df, fileloc2, row.names = FALSE)
+
+  # #drop count too and save to another csv
+  # exclude2 <- c("count")
+  # df <- df[, !(names(df) %in% exclude2)]
+
+  write.csv(df, paste0("/mnt/data/output/",reach_id, "_consensus.csv"), row.names = FALSE)
+}
+
 
 #' Get FLPE discharge output from current run
 #'
@@ -99,7 +182,6 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
   # time
   filename <- paste0(reach_id, "_SWOT.nc")
   filepath <- file.path(input_dir, "swot", filename, fsep=.Platform$file.sep)
-
   # ensures that we can find the file to run on
   if (file.exists(filepath)){
     swot <- open.nc(filepath)
@@ -110,6 +192,7 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
     data_list$date = nt
 
   } else{
+    print(filepath)
     stop("Could not find input file, be sure the reaches.json is pointing to processed data.")
   }
 
@@ -222,6 +305,9 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
   } else{
     print('Could not find metroman')
   }
+  print('-------------------------------------------------------------------------')
+  print('preprocessing')
+  print(data_list)
   
   # # metroman
   # filename <- list.files(path=file.path(flpe_dir, "metroman", fsep=.Platform$file.sep), 
@@ -293,9 +379,14 @@ get_flpe_current <- function(reach_id, input_dir, flpe_dir) {
 
   df = data.frame(data_list)
 
-  write.csv(df, "/mnt/data/output/consensus.csv", row.names = FALSE)
 
-  print('dataframe to list')
+  if ("sic4dvar_mm_q" %in% names(df)) {
+    con_df <- df[, names(df) != "sic4dvar_mm_q", drop = FALSE]
+  } else {
+    con_df <- df
+  }
+
+  create_consensus_q(con_df, reach_id)
   outlist <- list("df" = df, "success_list" = success_list)
   return(outlist)
 }
@@ -322,7 +413,6 @@ get_gb_q_cur <- function(ds, name) {
 #'
 #' @return dataframe of previous FLPE discharge data
 get_flpe_prev <- function(reach_id, sos_file, s3_bucket, success_list, local_bool) {
-  print('in get flpe prev')
   
   key = get_result_file_name(reach_id, sos_file)
   if (!local_bool){

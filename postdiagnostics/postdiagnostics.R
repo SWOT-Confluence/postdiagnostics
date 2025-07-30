@@ -13,22 +13,33 @@
 #' @param current_bucket string name of bucket and key prefix to download current SoS from
 run_flpe_diagnostics <- function(input_dir, flpe_dir, output_dir, reaches_json, 
                                  index, tolerance, current_bucket,
-                                 previous_bucket, local_bool) {
+                                 previous_bucket, local_bool, chunking_bool) {
   # INPUT
   print('getting input files')
-  reach_files <- get_input_data(reaches_json, input_dir, index, current_bucket)
-  print(paste0('Running on: ', reach_files$reach_id))
-  print('getting flpe data')
-  data <- get_data_flpe(reach_files$sos, reach_files$reach_id, input_dir,
-                        flpe_dir, previous_bucket, local_bool)
+  reach_files <- get_input_data(reaches_json, input_dir, index, current_bucket, chunking_bool)
   
-  # PROCESSING
-  print('processing')
-  diag_data_flpe <- flpe_diagnostics(data$curr, data$prev, tolerance)
-  
-  # OUTPUT
-  print('outputting')
-  write_data_flpe(diag_data_flpe, reach_files$reach_id, output_dir)
+  for (reach_file in reach_files) {
+    cat("Running on: ", reach_file$reach_id, "\n")
+    print('getting flpe data')
+    
+    data <- get_data_flpe(
+      reach_file$sos,
+      reach_file$reach_id,
+      input_dir,
+      flpe_dir,
+      previous_bucket,
+      local_bool
+    )
+    
+    #-------------------RETURN TO TURN BACK ON PROCESSING------------------------
+    # # PROCESSING
+    # print('processing')
+    # diag_data_flpe <- flpe_diagnostics(data$curr, data$prev, tolerance)
+    
+    # # OUTPUT
+    # print('outputting')
+    # write_data_flpe(diag_data_flpe, reach_file$reach_id, output_dir)
+  }
 }
 
 #' Diagnostics on FLPE discharge data
