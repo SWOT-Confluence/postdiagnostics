@@ -7,7 +7,7 @@ resource "aws_batch_job_definition" "generate_batch_jd_postdiagnostics_flpe" {
   tags = { "job_definition" : "${var.prefix}-postdiagnostics-flpe" }
 
   container_properties = jsonencode({
-    image = "${local.account_id}.dkr.ecr.us-west-2.amazonaws.com/${var.prefix}-postd-flpe:${var.image_tag}"
+    image = "${local.account_id}.dkr.ecr.us-west-2.amazonaws.com/${var.prefix}-postdiagnostics-flpe:${var.image_tag}"
     executionRoleArn = var.iam_execution_role_arn
     jobRoleArn = var.iam_job_role_arn
     fargatePlatformConfiguration = {
