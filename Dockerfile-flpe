@@ -1,5 +1,5 @@
 # STAGE 0 - Ubuntu packages and R repository
-FROM ubuntu as stage0
+FROM ubuntu:24.04 as stage0
 RUN echo "America/New_York" | tee /etc/timezone \
 	&& apt update \
 	&& DEBIAN_FRONTEND=noninteractive apt install -y \
